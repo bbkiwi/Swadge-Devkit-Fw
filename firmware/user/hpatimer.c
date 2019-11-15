@@ -184,6 +184,16 @@ void ICACHE_FLASH_ATTR setBuzzerNote(notePeriod_t note)
     }
 }
 
+notePeriod_t ICACHE_FLASH_ATTR getBuzzerNote(void)
+{
+    // If it's muted, don't set anything
+    if(getIsMutedOption())
+    {
+        return;
+    }
+    return bzr.note;
+}
+
 /**
  * Set the song currently played by the buzzer. The pointer will be saved, but
  * no memory will be copied, so don't modify it!

@@ -60,11 +60,13 @@ const song_t BlackDog ICACHE_RODATA_ATTR =
         {.note = G_5, .timeMs = 188},
         {.note = G_SHARP_5, .timeMs = 188},
         {.note = A_5, .timeMs = 188},
+        {.note = SILENCE, .timeMs = 500},
         {.note = E_5, .timeMs = 188},
         {.note = C_6, .timeMs = 375},
         {.note = A_5, .timeMs = 375},
         {.note = D_6, .timeMs = 188},
         {.note = E_6, .timeMs = 188},
+        {.note = SILENCE, .timeMs = 500},
         {.note = C_6, .timeMs = 94},
         {.note = D_6, .timeMs = 94},
         {.note = C_6, .timeMs = 188},
@@ -82,7 +84,7 @@ const song_t BlackDog ICACHE_RODATA_ATTR =
         {.note = A_4, .timeMs = 375},
         {.note = A_4, .timeMs = 750},
     },
-    .numNotes = 25,
+    .numNotes = 27,
     .shouldLoop = true
 };
 
@@ -335,7 +337,7 @@ void ICACHE_FLASH_ATTR testEnterMode(void)
     // Test the LEDs
     os_timer_disarm(&test.TimerHandleLeds);
     os_timer_setfn(&test.TimerHandleLeds, (os_timer_func_t*)testLedFunc, NULL);
-    os_timer_arm(&test.TimerHandleLeds, 1000, 1);
+    os_timer_arm(&test.TimerHandleLeds, 10, 1);
 }
 
 /**
@@ -355,12 +357,32 @@ void ICACHE_FLASH_ATTR testExitMode(void)
  */
 static void ICACHE_FLASH_ATTR testLedFunc(void* arg __attribute__((unused)))
 {
+    uint32_t colorToShow;
+    uint8_t midiNote;
     led_t leds[NUM_LIN_LEDS] = {{0}};
+    //os_printf("%d\n", getBuzzerNote());
+    if (getBuzzerNote() != 0)
+    {
+        midiNote = 33.0 - log(55.0 * getBuzzerNote() / 2500000.0) / log(2.0) * 12.0;
+        colorToShow = EHSVtoHEX((midiNote % 12) * 255 / 12, 0xFF, 0x7F);
+    }
+    else
+    {
+        colorToShow = 0;
+    }
+
+    uint8_t ledr = (colorToShow >>  0) & 0xFF;
+    uint8_t ledg = (colorToShow >>  8) & 0xFF;
+    uint8_t ledb = (colorToShow >> 16) & 0xFF;
+
     static int ledPos = 0;
-    ledPos = (ledPos + 1) % NUM_LIN_LEDS;
-    leds[(ledPos + 0) % NUM_LIN_LEDS].r = 16;
-    leds[(ledPos + 1) % NUM_LIN_LEDS].g = 16;
-    leds[(ledPos + 2) % NUM_LIN_LEDS].b = 16;
+    //ledPos = (ledPos + 1) % NUM_LIN_LEDS;
+    for (ledPos = 0; ledPos < NUM_LIN_LEDS; ledPos++)
+    {
+        leds[(ledPos + 0) % NUM_LIN_LEDS].r = ledr;
+        leds[(ledPos + 0) % NUM_LIN_LEDS].g = ledg;
+        leds[(ledPos + 0) % NUM_LIN_LEDS].b = ledb;
+    }
     setLeds(leds, sizeof(leds));
 }
 
