@@ -2,7 +2,7 @@
  * mode_joust_game.c
  *
  *  Created on: Sep 1, 2019
- *      Author: aaron
+ *      Author: Aaron Angert
  *
  */
 
@@ -23,6 +23,9 @@
 #include "oled.h"
 #include "font.h"
 #include "embeddedout.h"
+#include "buzzer.h" // music and sfx
+#include "hpatimer.h" // buzzer functions
+#include "bresenham.h"
 
 /*============================================================================
  * Defines
@@ -34,7 +37,11 @@
 #else
     #define joust_printf(...)
 #endif
-
+#define SPRITE_DIM 4
+#define JOUST_FIELD_OFFSET_X 24
+#define JOUST_FIELD_OFFSET_Y 14
+#define JOUST_FIELD_WIDTH  SPRITE_DIM * 20
+#define JOUST_FIELD_HEIGHT SPRITE_DIM * 11
 /*============================================================================
  * Enums
  *==========================================================================*/
@@ -48,7 +55,8 @@ typedef enum
     R_PLAYING,
     R_PLAYINGFFA,
     R_WAITING,
-    R_SHOW_GAME_RESULT
+    R_SHOW_GAME_RESULT,
+    R_GAME_OVER
 } joustGameState_t;
 
 typedef enum
@@ -105,7 +113,7 @@ void ICACHE_FLASH_ATTR joustShowConnectionLedTimeout(void* arg __attribute__((un
 void ICACHE_FLASH_ATTR joustShowConnectionLedTimeoutFFA(void* arg __attribute__((unused)));
 void ICACHE_FLASH_ATTR joustGameLedTimeout(void* arg __attribute__((unused)));
 void ICACHE_FLASH_ATTR joustRoundResultLed(void* arg __attribute__((unused)));
-void ICACHE_FLASH_ATTR joustRoundResult(bool);
+void ICACHE_FLASH_ATTR joustRoundResult(int);
 void ICACHE_FLASH_ATTR joustRoundResultFFA(void);
 
 void ICACHE_FLASH_ATTR joustUpdateDisplay(void);
@@ -126,6 +134,7 @@ swadgeMode joustGameMode =
     .fnAccelerometerCallback = joustAccelerometerHandler,
     .menuImageData = mnu_joust_0,
     .menuImageLen = sizeof(mnu_joust_0)
+
 };
 
 struct
@@ -141,7 +150,6 @@ struct
         bool shouldTurnOnLeds;
         bool round_winner;
         uint32_t joustWins;
-        // uint32_t otherJoustElo;
         uint32_t win_score;
         uint32_t lose_score;
     } gam;
@@ -178,6 +186,147 @@ struct
 /*============================================================================
  * Functions
  *==========================================================================*/
+
+// Music / SFX
+
+const song_t endGameSFX RODATA_ATTR =
+{
+    .notes = {
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+    },
+    .numNotes = 28,
+    .shouldLoop = false
+};
+
+const song_t tieGameSFX RODATA_ATTR =
+{
+    .notes = {
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 300},
+        {.note = C_4, .timeMs = 300},
+        {.note = SILENCE, .timeMs = 1},
+    },
+    .numNotes = 26,
+    .shouldLoop = false
+};
+
+const song_t endGameWin2SFX RODATA_ATTR =
+{
+    .notes = {
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_4, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 300},
+        {.note = C_6, .timeMs = 300},
+        {.note = SILENCE, .timeMs = 1},
+    },
+    .numNotes = 26,
+    .shouldLoop = false
+};
+
+
+const song_t endGameWinSFX RODATA_ATTR =
+{
+    .notes = {
+        {.note = C_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = D_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = F_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 200},
+        {.note = C_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = D_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = F_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 200},
+        {.note = D_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = E_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = F_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 1},
+        {.note = G_4, .timeMs = 100},
+        {.note = SILENCE, .timeMs = 400},
+        {.note = C_5, .timeMs = 200},
+        {.note = SILENCE, .timeMs = 1},
+    },
+    .numNotes = 26,
+    .shouldLoop = false
+};
 
 /**
  * Get a random number from a range.
@@ -230,13 +379,9 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
             }
             joust_printf("connection established\n");
             clearDisplay();
-            // char accelStr[32] = {0};
             plotText(0, 0, "Found Player", IBM_VGA_8, WHITE);
             plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
             plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), "Not yours!", IBM_VGA_8, WHITE);
-            //joust.gameState = R_SHOW_CONNECTION;
-
-            // ets_memset(joust.led.Leds, 0, sizeof(joust.led.Leds));
 
             joustDisarmAllLedTimers();
             // 6ms * ~500 steps == 3s animation
@@ -274,9 +419,6 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
         joust_printf("%s %s\n", __func__, msg);
     }
 
-
-
-
     switch(joust.gameState)
     {
         case R_CONNECTING:
@@ -291,13 +433,28 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
         {
             if(0 == ets_memcmp(msg, "los", 3))
             {
+                p2pSendMsg(&joust.p2pJoust, "win", NULL, 0, joustMsgTxCbFn);
                 joustRoundResult(true);
             }
             // Currently playing a game, if a message is sent, then update score
             break;
         }
-        case R_PLAYINGFFA:
+        case R_GAME_OVER:
         {
+            if(0 == ets_memcmp(msg, "los", 3))
+            {
+                p2pSendMsg(&joust.p2pJoust, "tie", NULL, 0, joustMsgTxCbFn);
+                joustRoundResult(2);
+            }
+            else if(0 == ets_memcmp(msg, "tie", 3))
+            {
+                joustRoundResult(2);
+            }
+            else if(0 == ets_memcmp(msg, "win", 3))
+            {
+                joustRoundResult(false);
+            }
+            // Currently playing a game, if a message is sent, then update score
             break;
         }
         case R_MENU:
@@ -309,12 +466,12 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
             {
                 joust.con_color =  atoi((const char*)payload);
                 clearDisplay();
-                // char accelStr[32] = {0};
                 plotText(0, 0, "Found Player", IBM_VGA_8, WHITE);
                 plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
                 plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), "Not yours!", IBM_VGA_8, WHITE);
             }
         }
+        case R_PLAYINGFFA:
         case R_SHOW_CONNECTION:
         case R_SHOW_GAME_RESULT:
         {
@@ -345,9 +502,7 @@ void ICACHE_FLASH_ATTR joustInit(void)
     setLeds(joust.led.Leds, sizeof(joust.led.Leds));
 
     ets_memset(&joust, 0, sizeof(joust));
-    //just print for now
     joust_printf("%s\r\n", __func__);
-    // setJoustElo(150);
     joust.gam.joustWins = getJoustWins();
     if(joust.gam.joustWins > 10000)
     {
@@ -355,10 +510,26 @@ void ICACHE_FLASH_ATTR joustInit(void)
     }
 
     clearDisplay();
-    plotText(32, 0, "Joust", RADIOSTARS, WHITE);
-    char menuStr[32] = {0};
-    ets_snprintf(menuStr, sizeof(menuStr), "wins: %d", joust.gam.joustWins);
-    plotText(0, OLED_HEIGHT - (1 * (FONT_HEIGHT_IBMVGA8 + 1)) - FONT_HEIGHT_TOMTHUMB - 6, menuStr, TOM_THUMB, WHITE);
+    if(joust.gam.joustWins < 4)
+    {
+        plotText(0, 0, "Joust is a movement game where", TOM_THUMB, WHITE);
+        plotText(0, FONT_HEIGHT_TOMTHUMB + 1, "you try to jostle your opponents", TOM_THUMB, WHITE);
+        plotText(0, 2 * FONT_HEIGHT_TOMTHUMB + 2, "swadge while keeping yours still.", TOM_THUMB, WHITE);
+        plotText(0, 4 * FONT_HEIGHT_TOMTHUMB, "There are two modes Free For all", TOM_THUMB, WHITE);
+        plotText(0, 5 * FONT_HEIGHT_TOMTHUMB + 1, "and 2 Player, which tracks wins", TOM_THUMB, WHITE);
+        plotText(0, 7 * FONT_HEIGHT_TOMTHUMB, "Press the left or right button", TOM_THUMB, WHITE);
+        plotText(0, 8 * FONT_HEIGHT_TOMTHUMB + 1, "to select a game type. enjoy!", TOM_THUMB, WHITE);
+        char menuStr[32] = {0};
+        ets_snprintf(menuStr, sizeof(menuStr), "wins: %d", joust.gam.joustWins);
+        plotText(0, 9 * FONT_HEIGHT_TOMTHUMB + 3, menuStr, TOM_THUMB, WHITE);
+    }
+    else
+    {
+        plotText(32, 0, "Joust", RADIOSTARS, WHITE);
+        char menuStr[32] = {0};
+        ets_snprintf(menuStr, sizeof(menuStr), "wins: %d", joust.gam.joustWins);
+        plotText(0, OLED_HEIGHT - (1 * (FONT_HEIGHT_IBMVGA8 + 1)) - FONT_HEIGHT_TOMTHUMB - 6, menuStr, TOM_THUMB, WHITE);
+    }
 
     uint8_t scoresAreaX0 = 0;
     uint8_t scoresAreaY0 = OLED_HEIGHT - (FONT_HEIGHT_TOMTHUMB + 3);
@@ -380,8 +551,8 @@ void ICACHE_FLASH_ATTR joustInit(void)
 
     if(joust.gam.joustWins < 4)
     {
-        plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Serf Simian", IBM_VGA_8, WHITE);
-        plotText(0, OLED_HEIGHT - (1 * (FONT_HEIGHT_IBMVGA8 + 1)) - FONT_HEIGHT_TOMTHUMB, "Next level: 4", TOM_THUMB, WHITE);
+        // plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Serf Simian", IBM_VGA_8, WHITE);
+        // plotText(0, OLED_HEIGHT - (1 * (FONT_HEIGHT_IBMVGA8 + 1))-FONT_HEIGHT_TOMTHUMB, "Next level: 4", TOM_THUMB, WHITE);
     }
     else if(joust.gam.joustWins < 8)
     {
@@ -742,15 +913,6 @@ void ICACHE_FLASH_ATTR joustStartPlayingFFA(void* arg __attribute__((unused)))
 }
 
 
-/**
- * Start a round of the game by picking a random action and starting
- * refGameLedTimeout()
- */
-// void ICACHE_FLASH_ATTR joustStartRound(void)
-// {
-//     joust.gameState = R_PLAYING;
-// }
-
 void ICACHE_FLASH_ATTR joustUpdateDisplay(void)
 {
     // Clear the display
@@ -780,10 +942,11 @@ void ICACHE_FLASH_ATTR joustAccelerometerHandler(accel_t* accel)
 
         if (joust.gameState == R_PLAYING || joust.gameState == R_PLAYINGFFA)
         {
-            if(mov > joust.rolling_average + 60)
+            if(mov > joust.rolling_average + 40)
             {
                 if(joust.gameState == R_PLAYING)
                 {
+                    joust.gameState = R_GAME_OVER;
                     joustSendRoundLossMsg();
                 }
                 else
@@ -950,14 +1113,11 @@ void ICACHE_FLASH_ATTR joustButton( uint8_t state __attribute__((unused)),
  */
 void ICACHE_FLASH_ATTR joustSendRoundLossMsg(void)
 {
-    joust_printf("Lost the round\r\n");
-
     // Send a message to that ESP that we lost the round
     // If it's acked, start a timer to reinit if another message is never received
     // If it's not acked, reinit with refRestart()
     p2pSendMsg(&joust.p2pJoust, "los", NULL, 0, joustMsgTxCbFn);
     // Show the current wins & losses
-    joustRoundResult(false);
 }
 
 /**
@@ -979,6 +1139,8 @@ void ICACHE_FLASH_ATTR joustMsgTxCbFn(p2pInfo* p2p __attribute__((unused)),
         case MSG_FAILED:
         {
             joust_printf("%s MSG_FAILED\n", __func__);
+            joustDisarmAllLedTimers();
+            os_timer_arm(&joust.tmr.RestartJoust, 100, false);
             break;
         }
         default:
@@ -1021,23 +1183,76 @@ void ICACHE_FLASH_ATTR joustRoundResultLed(void* arg __attribute__((unused)))
  * @param roundWinner true if this swadge was a winner, false if the other
  *                    swadge won
  */
-void ICACHE_FLASH_ATTR joustRoundResult(bool roundWinner)
+void ICACHE_FLASH_ATTR joustRoundResult(int roundWinner)
 {
-
+    joust.gameState = R_SHOW_GAME_RESULT;
     joustDisarmAllLedTimers();
+    startBuzzerSong(&endGameSFX);
     joust.gam.round_winner = roundWinner;
     os_timer_arm(&joust.tmr.RoundResultLed, 6, true);
     joust.gameState = R_SHOW_GAME_RESULT;
-    if(roundWinner)
+    if(roundWinner == 2)
+    {
+        clearDisplay();
+        plotText(0, 0, "Tie!!", IBM_VGA_8, WHITE);
+        joust.gam.joustWins = joust.gam.joustWins + 1;
+        startBuzzerSong(&tieGameSFX);
+    }
+    else if(roundWinner)
     {
         clearDisplay();
         plotText(0, 0, "Winner!!", IBM_VGA_8, WHITE);
         joust.gam.joustWins = joust.gam.joustWins + 1;
+        if( joust.gam.joustWins >= 12)
+        {
+
+            // 0 means Bongos
+            if(true == unlockGallery(0))
+            {
+                // Print gallery unlock
+                fillDisplayArea(
+                    JOUST_FIELD_OFFSET_X + 5,
+                    JOUST_FIELD_OFFSET_Y + (JOUST_FIELD_HEIGHT / 2) - FONT_HEIGHT_IBMVGA8 - 2 - 2,
+                    JOUST_FIELD_OFFSET_X + JOUST_FIELD_WIDTH - 1 - 5,
+                    JOUST_FIELD_OFFSET_Y + (JOUST_FIELD_HEIGHT / 2) + FONT_HEIGHT_IBMVGA8 + 1 + 2,
+                    BLACK);
+                plotRect(
+                    JOUST_FIELD_OFFSET_X + 5,
+                    JOUST_FIELD_OFFSET_Y + (JOUST_FIELD_HEIGHT / 2) - FONT_HEIGHT_IBMVGA8 - 2 - 2,
+                    JOUST_FIELD_OFFSET_X + JOUST_FIELD_WIDTH - 1 - 5,
+                    JOUST_FIELD_OFFSET_Y + (JOUST_FIELD_HEIGHT / 2) + FONT_HEIGHT_IBMVGA8 + 1 + 2,
+                    WHITE);
+                plotText(
+                    JOUST_FIELD_OFFSET_X + 8 + 4,
+                    JOUST_FIELD_OFFSET_Y + (JOUST_FIELD_HEIGHT / 2) - (FONT_HEIGHT_IBMVGA8) - 1,
+                    "Gallery",
+                    IBM_VGA_8,
+                    WHITE);
+                plotText(
+                    JOUST_FIELD_OFFSET_X + 8,
+                    JOUST_FIELD_OFFSET_Y + (JOUST_FIELD_HEIGHT / 2) + 1,
+                    "Unlocked",
+                    IBM_VGA_8,
+                    WHITE);
+            }
+        }
+        if(joust.gam.joustWins % 2 == 0)
+        {
+            startBuzzerSong(&endGameWinSFX);
+
+        }
+        else
+        {
+            startBuzzerSong(&endGameWin2SFX);
+
+        }
     }
     else
     {
         clearDisplay();
+
         plotText(0, 0, "Loser", IBM_VGA_8, WHITE);
+        startBuzzerSong(&endGameSFX);
     }
     setJoustWins(joust.gam.joustWins);
     os_timer_arm(&joust.tmr.RestartJoust, 6000, false);
@@ -1051,16 +1266,17 @@ void ICACHE_FLASH_ATTR joustRoundResult(bool roundWinner)
  */
 void ICACHE_FLASH_ATTR joustRoundResultFFA()
 {
-
-    joustDisarmAllLedTimers();
-    os_timer_arm(&joust.tmr.RoundResultLed, 6, true);
     joust.gameState = R_SHOW_GAME_RESULT;
+    joustDisarmAllLedTimers();
+    startBuzzerSong(&endGameSFX);
+    os_timer_arm(&joust.tmr.RoundResultLed, 6, true);
+
     clearDisplay();
     plotText(0, 0, "GAME OVER", IBM_VGA_8, WHITE);
     char menuStr[32] = {0};
     ets_snprintf(menuStr, sizeof(menuStr), "SCORE: %d", joust.FFACounter);
     plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), menuStr, IBM_VGA_8, WHITE);
-    os_timer_arm(&joust.tmr.RestartJoust, 10000, false);
+    os_timer_arm(&joust.tmr.RestartJoust, 6000, false);
 }
 
 

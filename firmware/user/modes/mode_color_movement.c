@@ -236,22 +236,23 @@ static const uint8_t cmBrightnesses[] =
     0x08,
 };
 
-const char* subModeName[] = {
-	"BEAT SPIN",
-	"BEAT SELECT",
-	"SHOCK CHANGE",
-	"SHOCK CHAOTIC",
-	"ROLL BALL",
-	"ROLL 3 BALLS",
-	"TILT A COLOR",
-	"TWIRL A COLOR",
+const char* subModeName[] =
+{
+    "BEAT SPIN",
+    "BEAT SELECT",
+    "SHOCK CHANGE",
+    "SHOCK CHAOTIC",
+    "ROLL BALL",
+    "ROLL 3 BALLS",
+    "TILT A COLOR",
+    "TWIRL A COLOR",
 #ifdef ENABLE_POV_EFFECT
     "POV EFFECT",
 #endif
 #ifdef COLORCHORD_DFT
-	"DFT SHAKE",
+    "DFT SHAKE",
 #endif
-	"POWER SHAKE"
+    "POWER SHAKE"
 };
 
 char* cmShockName[4] = {"BIFF!", "POW!", "BOOM!", "WHAM!"};
@@ -1180,18 +1181,20 @@ void ICACHE_FLASH_ATTR cmGameUpdate(void)
                 //os_printf("ledCycle %d, modeTime %d, ledPrevIncTime %d\n", ledCycle, modeTime, ledPrevIncTime);
             }
 
+            plotCenteredText(0, 0, OLED_WIDTH, "SHAKE TO FILL", IBM_VGA_8, WHITE);
+
             // Draw the outline of a battery
             plotRect(
                 0,
-                OLED_HEIGHT / 2 - 24,
+                (OLED_HEIGHT / 2 - 18) + 5,
                 OLED_WIDTH - 12,
-                OLED_HEIGHT / 2 + 24,
+                (OLED_HEIGHT / 2 + 18) + 5,
                 WHITE);
             plotRect(
                 OLED_WIDTH - 12,
-                OLED_HEIGHT / 2 - 12,
+                (OLED_HEIGHT / 2 - 9) + 5,
                 OLED_WIDTH - 1,
-                OLED_HEIGHT / 2 + 12,
+                (OLED_HEIGHT / 2 + 9) + 5,
                 WHITE);
 
             // Calculate a battery level from the hue
@@ -1204,9 +1207,9 @@ void ICACHE_FLASH_ATTR cmGameUpdate(void)
             // Fill up the battery
             fillDisplayArea(
                 5,
-                OLED_HEIGHT / 2 - 19,
+                (OLED_HEIGHT / 2 - 14) + 5,
                 5 + battLevel,
-                OLED_HEIGHT / 2 + 19,
+                (OLED_HEIGHT / 2 + 14) + 5,
                 WHITE);
         }
         else
@@ -1227,7 +1230,8 @@ void ICACHE_FLASH_ATTR cmGameUpdate(void)
             // Keep a running count of the rotation
             cmColorWheelCountFloat += amtToRotate;
             // Never let it get greater than 255
-            if(cmColorWheelCountFloat >= 255) {
+            if(cmColorWheelCountFloat >= 255)
+            {
                 cmColorWheelCountFloat -= 255;
             }
             // Round it to an int to be used later
@@ -1464,6 +1468,13 @@ void ICACHE_FLASH_ATTR cmGameDisplay(void)
         plotCenteredText(0, OLED_HEIGHT - adjFlyOut, 127,
                          (char*)subModeName[cmCurrentSubMode], IBM_VGA_8, WHITE);
     }
+    else
+    {
+        // If the title isn't visible, plot button labels
+        plotText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Brightness", TOM_THUMB, WHITE);
+        plotText(OLED_WIDTH - 16, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Mode", TOM_THUMB, WHITE);
+    }
+
 
     if ((cmBrightnessRamp > 127) && ((cmCurrentSubMode == SHOCK_CHANGE) || (cmCurrentSubMode == SHOCK_CHAOTIC)))
     {

@@ -18,7 +18,6 @@
 //#include "embeddedout.h"
 #include "oled.h"
 #include "font.h"
-#include "MMA8452Q.h"
 #include "bresenham.h"
 #include "buttons.h"
 #include "math.h"
@@ -36,9 +35,9 @@
 // If want to simulate 6 LED barrel on dev-kit or bbkiwi or other with more than 6 leds
 #define USE_6_LEDS
 #ifdef USE_6_LEDS
-#define USE_NUM_LEDS 6
+    #define USE_NUM_LEDS 6
 #else
-#define USE_NUM_LEDS NUM_LIN_LEDS
+    #define USE_NUM_LEDS NUM_LIN_LEDS
 #endif
 // LEDs relation to screen
 #define LED_UPPER_LEFT LED_1
@@ -233,8 +232,8 @@ void ICACHE_FLASH_ATTR rollEnterMode(uint8_t method)
 
 
     roll.numNotes = 9;
-    uint8_t intervals[] = {2, 3, 2, 2, 3}; // pentatonic
-    generateScale(roll.midiScale, roll.numNotes, intervals, sizeof(intervals) );
+    // uint8_t intervals[] = {2, 3, 2, 2, 3}; // pentatonic
+    // generateScale(roll.midiScale, roll.numNotes, intervals, sizeof(intervals) );
     initializeConditionsForODE(roll.currentMethod);
 
 }
@@ -836,8 +835,8 @@ void ICACHE_FLASH_ATTR roll_updateDisplay(void)
     setRollLeds(roll.leds, sizeof(roll.leds));
     // Set midiNote
     //TODO are notes spread equally around circle?
-    uint8_t notenum = (int)(0.5 + roll.numNotes * atan2(roll.scxc - 64, roll.scyc - 32) / 2.0 / pi) + (roll.numNotes >> 1);
-    roll.midiNote = midi2note(roll.midiScale[notenum]);
+    // uint8_t notenum = (int)(0.5 + roll.numNotes * atan2(roll.scxc - 64, roll.scyc - 32) / 2.0 / pi) + (roll.numNotes >> 1);
+    // roll.midiNote = midi2note(roll.midiScale[notenum]);
     // if want continous change at each frame
     //setBuzzerNote(roll.midiNote);
     //os_printf("notenum = %d,   midi = %d,  roll.midiNote = %d\n", notenum, roll.midiScale[notenum], roll.midiNote);
