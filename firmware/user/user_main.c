@@ -29,6 +29,7 @@
 #include "oled.h"
 #include "PartitionMap.h"
 #include "QMA6981.h"
+#include "MMA8452Q.h"
 
 #include "mode_menu.h"
 #include "mode_joust_game.h"
@@ -104,6 +105,7 @@ swadgeMode* swadgeModes[] =
 bool swadgeModeInit = false;
 rtcMem_t rtcMem = {0};
 
+bool MMA8452Q_init = false;
 bool QMA6981_init = false;
 
 /*============================================================================
@@ -328,7 +330,11 @@ static void ICACHE_FLASH_ATTR pollAccel(void* arg __attribute__((unused)))
     if(swadgeModeInit && NULL != swadgeModes[rtcMem.currentSwadgeMode]->fnAccelerometerCallback)
     {
         accel_t accel = {0};
-        if(true == QMA6981_init)
+        if(true == MMA8452Q_init)
+        {
+            MMA8452Q_poll(&accel);
+        }
+        else if(true == QMA6981_init)
         {
             QMA6981_poll(&accel);
         }
@@ -552,6 +558,23 @@ void setAccelPollTime(uint32_t pollTimeMs)
 void ICACHE_FLASH_ATTR initializeAccelerometer(void)
 {
     // Initialize accel
+    if(NULL != swadgeModes[rtcMem.currentSwadgeMode]->fnAccelerometerCallback)
+    {
+        if(true == MMA8452Q_setup())
+        {
+            MMA8452Q_init = true;
+            os_printf("MMA8452Q initialized\n");
+        }
+        else
+        {
+            os_printf("MMA8452Q initialization failed\n");
+        }
+    }
+    else
+    {
+        os_printf("MMA8452Q not needed\n");
+    }
+
     if(NULL != swadgeModes[rtcMem.currentSwadgeMode]->fnAccelerometerCallback)
     {
         if(true == QMA6981_setup())
