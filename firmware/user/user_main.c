@@ -526,7 +526,7 @@ uint8_t ICACHE_FLASH_ATTR getSwadgeModes(swadgeMode***  modePtr)
  *
  * @param drawTimeMs
  */
-void setOledDrawTime(uint32_t drawTimeMs)
+void ICACHE_FLASH_ATTR setOledDrawTime(uint32_t drawTimeMs)
 {
     os_timer_disarm(&timerHandleUpdateDisplay);
     os_timer_arm(&timerHandleUpdateDisplay, drawTimeMs, true);
@@ -537,17 +537,17 @@ void setOledDrawTime(uint32_t drawTimeMs)
  *
  * @param drawTimeMs
  */
-void setAccelPollTime(uint32_t pollTimeMs)
+void ICACHE_FLASH_ATTR setAccelPollTime(uint32_t pollTimeMs)
 {
     os_timer_disarm(&timerHandlePollAccel);
     os_timer_arm(&timerHandlePollAccel, pollTimeMs, true);
 }
 
 #else
-void setOledDrawTime(uint32_t drawTimeMs)
+void ICACHE_FLASH_ATTR setOledDrawTime(uint32_t drawTimeMs)
 {
 }
-void setAccelPollTime(uint32_t pollTimeMs)
+void ICACHE_FLASH_ATTR setAccelPollTime(uint32_t pollTimeMs)
 {
 }
 #endif
@@ -631,6 +631,12 @@ void ICACHE_FLASH_ATTR swadgeModeButtonCallback(uint8_t state, int button, int d
         // Switch the mode
         incrementSwadgeMode();
 #endif
+        // And also pass this to the music mode, and only the music mode
+        if(8 == rtcMem.currentSwadgeMode &&
+                swadgeModeInit && NULL != swadgeModes[rtcMem.currentSwadgeMode]->fnButtonCallback)
+        {
+            swadgeModes[rtcMem.currentSwadgeMode]->fnButtonCallback(state, button, down);
+        }
     }
     //NOTE for 2020 button 0 can only be used for menu, if want to be able to use momentary press in other modes
     //     change 'else if' to 'if'

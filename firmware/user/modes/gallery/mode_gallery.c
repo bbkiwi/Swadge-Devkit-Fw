@@ -23,6 +23,7 @@
 #include "hpatimer.h"
 #include "bresenham.h"
 #include "mode_tiltrads.h"
+#include "songs.h"
 
 /*==============================================================================
  * Defines
@@ -278,10 +279,120 @@ const galImage_t galUnlockSnake =
     }
 };
 
+const galImage_t wink =
+{
+    .nFrames = 16,
+    .frames =
+    {
+        {.data = gal_wink_0, .len = sizeof(gal_wink_0)},
+        {.data = gal_wink_1, .len = sizeof(gal_wink_1)},
+        {.data = gal_wink_2, .len = sizeof(gal_wink_2)},
+        {.data = gal_wink_3, .len = sizeof(gal_wink_3)},
+        {.data = gal_wink_4, .len = sizeof(gal_wink_4)},
+        {.data = gal_wink_5, .len = sizeof(gal_wink_5)},
+        {.data = gal_wink_6, .len = sizeof(gal_wink_6)},
+        {.data = gal_wink_7, .len = sizeof(gal_wink_7)},
+        {.data = gal_wink_8, .len = sizeof(gal_wink_8)},
+        {.data = gal_wink_9, .len = sizeof(gal_wink_9)},
+        {.data = gal_wink_10, .len = sizeof(gal_wink_10)},
+        {.data = gal_wink_11, .len = sizeof(gal_wink_11)},
+        {.data = gal_wink_12, .len = sizeof(gal_wink_12)},
+        {.data = gal_wink_13, .len = sizeof(gal_wink_13)},
+        {.data = gal_wink_14, .len = sizeof(gal_wink_14)},
+        {.data = gal_wink_15, .len = sizeof(gal_wink_15)},
+
+
+        {.data = gal_magsquare_0, .len = sizeof(gal_magsquare_0)},
+        {.data = gal_magsquare_1, .len = sizeof(gal_magsquare_1)},
+        {.data = gal_magsquare_2, .len = sizeof(gal_magsquare_2)},
+        {.data = gal_magsquare_3, .len = sizeof(gal_magsquare_3)},
+        {.data = gal_magvania_0, .len = sizeof(gal_magvania_0)},
+        {.data = gal_magvania_1, .len = sizeof(gal_magvania_1)},
+        {.data = gal_magvania_10, .len = sizeof(gal_magvania_10)},
+        {.data = gal_magvania_11, .len = sizeof(gal_magvania_11)},
+        {.data = gal_magvania_12, .len = sizeof(gal_magvania_12)},
+        {.data = gal_magvania_13, .len = sizeof(gal_magvania_13)},
+        {.data = gal_magvania_14, .len = sizeof(gal_magvania_14)},
+        {.data = gal_magvania_15, .len = sizeof(gal_magvania_15)},
+        {.data = gal_magvania_2, .len = sizeof(gal_magvania_2)},
+        {.data = gal_magvania_3, .len = sizeof(gal_magvania_3)},
+        {.data = gal_magvania_4, .len = sizeof(gal_magvania_4)},
+        {.data = gal_magvania_5, .len = sizeof(gal_magvania_5)},
+        {.data = gal_magvania_6, .len = sizeof(gal_magvania_6)},
+        {.data = gal_magvania_7, .len = sizeof(gal_magvania_7)},
+        {.data = gal_magvania_8, .len = sizeof(gal_magvania_8)},
+        {.data = gal_magvania_9, .len = sizeof(gal_magvania_9)},
+
+    }
+};
+
+const galImage_t galWink =
+{
+    .nFrames = 16,
+    .frames =
+    {
+        {.data = gal_wink_0, .len = sizeof(gal_wink_0)},
+        {.data = gal_wink_1, .len = sizeof(gal_wink_1)},
+        {.data = gal_wink_2, .len = sizeof(gal_wink_2)},
+        {.data = gal_wink_3, .len = sizeof(gal_wink_3)},
+        {.data = gal_wink_4, .len = sizeof(gal_wink_4)},
+        {.data = gal_wink_5, .len = sizeof(gal_wink_5)},
+        {.data = gal_wink_6, .len = sizeof(gal_wink_6)},
+        {.data = gal_wink_7, .len = sizeof(gal_wink_7)},
+        {.data = gal_wink_8, .len = sizeof(gal_wink_8)},
+        {.data = gal_wink_9, .len = sizeof(gal_wink_9)},
+        {.data = gal_wink_10, .len = sizeof(gal_wink_10)},
+        {.data = gal_wink_11, .len = sizeof(gal_wink_11)},
+        {.data = gal_wink_12, .len = sizeof(gal_wink_12)},
+        {.data = gal_wink_13, .len = sizeof(gal_wink_13)},
+        {.data = gal_wink_14, .len = sizeof(gal_wink_14)},
+        {.data = gal_wink_15, .len = sizeof(gal_wink_15)}
+    }
+};
+
+const galImage_t galMagsquare =
+{
+    .nFrames = 4,
+    .frames =
+    {
+        {.data = gal_magsquare_0, .len = sizeof(gal_magsquare_0)},
+        {.data = gal_magsquare_1, .len = sizeof(gal_magsquare_1)},
+        {.data = gal_magsquare_2, .len = sizeof(gal_magsquare_2)},
+        {.data = gal_magsquare_3, .len = sizeof(gal_magsquare_3)},
+    }
+};
+
+const galImage_t galMagvania =
+{
+    .nFrames = 16,
+    .frames =
+    {
+        {.data = gal_magvania_0, .len = sizeof(gal_magvania_0)},
+        {.data = gal_magvania_1, .len = sizeof(gal_magvania_1)},
+        {.data = gal_magvania_2, .len = sizeof(gal_magvania_2)},
+        {.data = gal_magvania_3, .len = sizeof(gal_magvania_3)},
+        {.data = gal_magvania_4, .len = sizeof(gal_magvania_4)},
+        {.data = gal_magvania_5, .len = sizeof(gal_magvania_5)},
+        {.data = gal_magvania_6, .len = sizeof(gal_magvania_6)},
+        {.data = gal_magvania_7, .len = sizeof(gal_magvania_7)},
+        {.data = gal_magvania_8, .len = sizeof(gal_magvania_8)},
+        {.data = gal_magvania_9, .len = sizeof(gal_magvania_9)},
+        {.data = gal_magvania_10, .len = sizeof(gal_magvania_10)},
+        {.data = gal_magvania_11, .len = sizeof(gal_magvania_11)},
+        {.data = gal_magvania_12, .len = sizeof(gal_magvania_12)},
+        {.data = gal_magvania_13, .len = sizeof(gal_magvania_13)},
+        {.data = gal_magvania_14, .len = sizeof(gal_magvania_14)},
+        {.data = gal_magvania_15, .len = sizeof(gal_magvania_15)},
+    }
+};
+
 // Order matters, must match galUnlockPlaceholders
-const galImage_t* galImages[5] =
+const galImage_t* galImages[8] =
 {
     &galLogo,    // Already unlocked
+    &galMagsquare,
+    &galMagvania,
+    &galWink,
     &galBongo,   // Joust
     &galFunkus,  // Snake
     &galGaylord, // Tiltrads
@@ -294,116 +405,6 @@ const galImage_t* galUnlockPlaceholders[4] =
     &galUnlockSnake,
     &galUnlockTiltrads,
     &galUnlockMaze
-};
-
-const song_t FourSeasons RODATA_ATTR =
-{
-    .notes = {
-        {.note = E_5, .timeMs = 316},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = F_SHARP_5, .timeMs = 158},
-        {.note = E_5, .timeMs = 158},
-        {.note = B_5, .timeMs = 947},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = B_5, .timeMs = 158},
-        {.note = A_5, .timeMs = 158},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = F_SHARP_5, .timeMs = 158},
-        {.note = E_5, .timeMs = 158},
-        {.note = B_5, .timeMs = 947},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = B_5, .timeMs = 158},
-        {.note = A_5, .timeMs = 158},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = A_5, .timeMs = 158},
-        {.note = B_5, .timeMs = 158},
-        {.note = A_5, .timeMs = 316},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = F_SHARP_5, .timeMs = 316},
-        {.note = D_SHARP_5, .timeMs = 316},
-        {.note = B_4, .timeMs = 947},
-        {.note = E_5, .timeMs = 316},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = F_SHARP_5, .timeMs = 158},
-        {.note = E_5, .timeMs = 158},
-        {.note = B_5, .timeMs = 947},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = B_5, .timeMs = 158},
-        {.note = A_5, .timeMs = 158},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = F_SHARP_5, .timeMs = 158},
-        {.note = E_5, .timeMs = 158},
-        {.note = B_5, .timeMs = 947},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = B_5, .timeMs = 158},
-        {.note = A_5, .timeMs = 158},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = A_5, .timeMs = 158},
-        {.note = B_5, .timeMs = 158},
-        {.note = A_5, .timeMs = 316},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = G_SHARP_5, .timeMs = 79},
-        {.note = SILENCE, .timeMs = 79},
-        {.note = F_SHARP_5, .timeMs = 316},
-        {.note = D_SHARP_5, .timeMs = 316},
-        {.note = B_4, .timeMs = 947},
-    },
-    .numNotes = 102,
-    .shouldLoop = true
 };
 
 /*==============================================================================
@@ -465,8 +466,9 @@ void ICACHE_FLASH_ATTR galExitMode(void)
  */
 void ICACHE_FLASH_ATTR galRearmMusicTimer(void)
 {
+    stopBuzzerSong();
     os_timer_disarm(&gal.timerMusic);
-    os_timer_arm(&gal.timerMusic, 10 * 1000, false);
+    os_timer_arm(&gal.timerMusic, 7 * 1000, false);
 }
 
 /**
@@ -483,7 +485,10 @@ void ICACHE_FLASH_ATTR galButtonCallback(uint8_t state __attribute__((unused)),
     if(down)
     {
         gal.u = false;
-        if(0x8C == (gal.h = ((gal.h << 1) | (button - 1)))) gal.u |= (unlockGallery(0) | unlockGallery(1) | unlockGallery(2) | unlockGallery(3));
+        if(0x8C == (gal.h = ((gal.h << 1) | (button - 1))))
+        {
+            gal.u |= (unlockGallery(0) | unlockGallery(1) | unlockGallery(2) | unlockGallery(3));
+        }
 
         // Whenever a button is pressed, rearm the music timer
         galRearmMusicTimer();
@@ -564,10 +569,10 @@ const galImage_t* ICACHE_FLASH_ATTR galGetCurrentImage(void)
 {
     const galImage_t* imageToLoad;
     // If we're not on the first image
-    if(gal.cImage > 0)
+    if(gal.cImage > 3)
     {
         // Check to see if it's unlocked
-        if(getGalleryUnlocks() & 1 << (gal.cImage - 1))
+        if(getGalleryUnlocks() & 1 << (gal.cImage - 4))
         {
             // unlocked
             imageToLoad = galImages[gal.cImage];
@@ -575,7 +580,7 @@ const galImage_t* ICACHE_FLASH_ATTR galGetCurrentImage(void)
         else
         {
             // Not unlocked
-            imageToLoad = galUnlockPlaceholders[gal.cImage - 1];
+            imageToLoad = galUnlockPlaceholders[gal.cImage - 4];
         }
     }
     else
@@ -818,7 +823,10 @@ void ICACHE_FLASH_ATTR galDrawFrame(void)
  */
 static void ICACHE_FLASH_ATTR galTimerMusic(void* arg __attribute__((unused)))
 {
-    startBuzzerSong(&FourSeasons);
+    if(0 == gal.cImage)
+    {
+        startBuzzerSong(getRandSong());
+    }
 }
 
 /**
