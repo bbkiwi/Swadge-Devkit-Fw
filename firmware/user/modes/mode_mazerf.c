@@ -11,8 +11,8 @@
 // Special Led pattern displays for each level
 // Auto maze adjusted time is reported (it is the actual time as it never hits the walls)
 //   but does not count for record times and does not show special LED pattern
-// NOTE very close to memory limit - have changed parameters for CC to smallest possible so less memory is 
-//      used. 
+// NOTE very close to memory limit - have changed parameters for CC to smallest possible so less memory is
+//      used.
 //TODO
 // Add Sound
 // Could make better choice of led patterns so hard levels get better patterns
