@@ -32,11 +32,11 @@
 #endif
 
 #ifndef OCTAVES
-#define OCTAVES  5
+#define OCTAVES  1
 #endif
 
 #ifndef FIXBPERO
-#define FIXBPERO 24
+#define FIXBPERO 12
 #endif
 
 //Don't configure this.
