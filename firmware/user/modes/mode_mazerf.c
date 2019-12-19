@@ -568,7 +568,7 @@ void ICACHE_FLASH_ATTR setLevel(uint8_t mzLevel)
             break;
         case IMPOSSIBLE_LEVEL:
             width = 63;
-            height = 27;
+            height = 19; //27;
             rballused = 1;
             break;
         default:
