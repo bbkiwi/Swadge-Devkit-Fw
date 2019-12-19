@@ -181,6 +181,7 @@ struct
     uint32_t lastCallTimeUs;
     int16_t rhythmNoteIdx;
     uint8_t bpmIdx;
+    uint8_t exampleIdx;
 
     // Track the button
     bool shouldPlay;
@@ -188,6 +189,7 @@ struct
     uint8_t scaleIdx;
     bool modifyBpm;
     os_timer_t paramSwitchTimer;
+    bool basicUI;
 } music;
 
 /*==============================================================================
@@ -628,6 +630,9 @@ const rhythmArp_t sb[] =
     {.note = EIGHTH_REST, .arp = 1},
 };
 
+#define NUM_BASIC_EXAMPLES 8
+uint8_t musicExamples[NUM_BASIC_EXAMPLES] = {0, 1, 10, 13, 19, 20, 21, 22 };
+
 const rhythm_t rhythms[] =
 {
     {
@@ -928,7 +933,8 @@ void ICACHE_FLASH_ATTR musicEnterMode(void)
 
     // Clear everything
     memset(&music, 0, sizeof(music));
-
+    // Start with basic UI
+    music.basicUI = true;
     // Set default BPM to default
     music.bpmIdx = rhythms[music.rhythmIdx].defaultBpm;
 
@@ -972,7 +978,7 @@ void ICACHE_FLASH_ATTR musicButtonCallback(
         case 0:
         {
             // Center
-            if(down)
+            if(down && !music.basicUI)
             {
                 // Cycle the scale
                 music.scaleIdx = (music.scaleIdx + 1) % lengthof(scales);
@@ -997,13 +1003,26 @@ void ICACHE_FLASH_ATTR musicButtonCallback(
                 // Button released while timer is still active, switch the mode
                 if(false == music.modifyBpm)
                 {
-                    // cycle params
-                    music.rhythmIdx = (music.rhythmIdx + 1) % lengthof(rhythms);
-                    music.timeUs = 0;
-                    music.rhythmNoteIdx = 0;
-                    music.lastCallTimeUs = 0;
-                    music.bpmIdx = rhythms[music.rhythmIdx].defaultBpm;
-                    musicUpdateDisplay();
+                    if(!music.basicUI)  // cycle params with advance controls
+                    {
+                        music.rhythmIdx = (music.rhythmIdx + 1) % lengthof(rhythms);
+                        music.timeUs = 0;
+                        music.rhythmNoteIdx = 0;
+                        music.lastCallTimeUs = 0;
+                        music.bpmIdx = rhythms[music.rhythmIdx].defaultBpm;
+                        musicUpdateDisplay();
+                    }
+                    else // cycle thru some fixed examples
+                    {
+                        music.exampleIdx = (music.exampleIdx+1) % NUM_BASIC_EXAMPLES;
+                        music.rhythmIdx = musicExamples[music.exampleIdx];
+                        // Could have different scales associated with the examples
+                        music.timeUs = 0;
+                        music.rhythmNoteIdx = 0;
+                        music.lastCallTimeUs = 0;
+                        music.bpmIdx = rhythms[music.rhythmIdx].defaultBpm;
+                        musicUpdateDisplay();
+                    }
                 }
                 // Clear this flag on release, always
                 music.modifyBpm = false;
@@ -1037,12 +1056,14 @@ void ICACHE_FLASH_ATTR musicButtonCallback(
 /**
  * Timer started when the 'choose' button is pressed.
  * If it expires before the button is released, set the flag to modify BPM
+ *       and leave basic UI
  * If it doesn't expire before the button is released, switch the mode params
  *
  * @param arg unused
  */
 void ICACHE_FLASH_ATTR paramSwitchTimerFunc(void* arg __attribute__((unused)))
 {
+    music.basicUI = false;
     music.modifyBpm = true;
     music.shouldPlay = false;
 }
@@ -1138,47 +1159,60 @@ void ICACHE_FLASH_ATTR musicUpdateDisplay(void)
         }
     }
 
-    // Plot the title
-    plotText(
-        OLED_WIDTH - getTextWidth(scales[music.scaleIdx].name, IBM_VGA_8),
-        0,
-        scales[music.scaleIdx].name,
-        IBM_VGA_8, WHITE);
-    plotText(
-        0,
-        0,
-        rhythms[music.rhythmIdx].name,
-        IBM_VGA_8, WHITE);
-
-    // Plot the BPM
     char bpmStr[8] = {0};
     ets_snprintf(bpmStr, sizeof(bpmStr), "%d", bpms[music.bpmIdx].bpm);
-    plotText(0, FONT_HEIGHT_IBMVGA8 + 4, bpmStr, IBM_VGA_8, WHITE);
 
-    // Underline it if it's being modified
-    if(true == music.modifyBpm)
+    if(music.basicUI)
     {
-        for(uint8_t i = 2; i < 4; i++)
+        plotCenteredText(0, 0, OLED_WIDTH, "WANT MORE MUSIC OPTIONS?", TOM_THUMB, WHITE);
+        plotCenteredText(0, 10, OLED_WIDTH, "HOLD DOWN THE MODE BUTTON!", TOM_THUMB, WHITE);
+        plotCenteredText(0, 20, OLED_WIDTH - 1, rhythms[music.rhythmIdx].name, RADIOSTARS, WHITE);
+        // Plot the button funcs
+        plotText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Mode", TOM_THUMB, WHITE);
+        plotText(OLED_WIDTH - getTextWidth("Play", TOM_THUMB), OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Play", TOM_THUMB, WHITE);
+    }
+    else
+    {
+        // Plot the title
+        plotText(
+            OLED_WIDTH - getTextWidth(scales[music.scaleIdx].name, IBM_VGA_8),
+            0,
+            scales[music.scaleIdx].name,
+            IBM_VGA_8, WHITE);
+        plotText(
+            0,
+            0,
+            rhythms[music.rhythmIdx].name,
+            IBM_VGA_8, WHITE);
+
+        // Plot the BPM
+        plotText(0, FONT_HEIGHT_IBMVGA8 + 4, bpmStr, IBM_VGA_8, WHITE);
+
+        // Underline it if it's being modified
+        if(true == music.modifyBpm)
         {
-            plotLine(
-                0,
-                (2 * FONT_HEIGHT_RADIOSTARS) + 4 + i,
-                getTextWidth(bpmStr, IBM_VGA_8),
-                (2 * FONT_HEIGHT_RADIOSTARS) + 4 + i,
-                WHITE);
+            for(uint8_t i = 2; i < 4; i++)
+            {
+                plotLine(
+                    0,
+                    (2 * FONT_HEIGHT_RADIOSTARS) + 4 + i,
+                    getTextWidth(bpmStr, IBM_VGA_8),
+                    (2 * FONT_HEIGHT_RADIOSTARS) + 4 + i,
+                    WHITE);
+            }
         }
-    }
 
-    // Plot the note if BPM isn't being modified
-    if(false == music.modifyBpm)
-    {
-        plotCenteredText(0, 20, OLED_WIDTH - 1, noteToStr(getCurrentNote()), RADIOSTARS, WHITE);
-    }
+        // Plot the note if BPM isn't being modified
+        if(false == music.modifyBpm)
+        {
+            plotCenteredText(0, 20, OLED_WIDTH - 1, noteToStr(getCurrentNote()), RADIOSTARS, WHITE);
+        }
 
-    // Plot the button funcs
-    plotText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Rhythm (BPM)", TOM_THUMB, WHITE);
-    plotCenteredText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, OLED_WIDTH, "Scale", TOM_THUMB, WHITE);
-    plotText(OLED_WIDTH - getTextWidth("Play", TOM_THUMB), OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Play", TOM_THUMB, WHITE);
+        // Plot the button funcs
+        plotText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Rhythm (BPM)", TOM_THUMB, WHITE);
+        plotCenteredText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, OLED_WIDTH, "Scale", TOM_THUMB, WHITE);
+        plotText(OLED_WIDTH - getTextWidth("Play", TOM_THUMB), OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Play", TOM_THUMB, WHITE);
+    }
 }
 
 /**
