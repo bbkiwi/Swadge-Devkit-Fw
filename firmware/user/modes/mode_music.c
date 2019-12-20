@@ -1164,10 +1164,11 @@ void ICACHE_FLASH_ATTR musicUpdateDisplay(void)
 
     if(music.basicUI)
     {
-        plotCenteredText(0, 0, OLED_WIDTH, "BASIC UI", IBM_VGA_8, WHITE);
+        plotCenteredText(0, 0, OLED_WIDTH, "WANT MORE MUSIC OPTIONS?", TOM_THUMB, WHITE);
+        plotCenteredText(0, 10, OLED_WIDTH, "HOLD DOWN THE MODE BUTTON!", TOM_THUMB, WHITE);
         plotCenteredText(0, 20, OLED_WIDTH - 1, rhythms[music.rhythmIdx].name, RADIOSTARS, WHITE);
         // Plot the button funcs
-        plotText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Example", TOM_THUMB, WHITE);
+        plotText(0, OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Mode", TOM_THUMB, WHITE);
         plotText(OLED_WIDTH - getTextWidth("Play", TOM_THUMB), OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB, "Play", TOM_THUMB, WHITE);
     }
     else
