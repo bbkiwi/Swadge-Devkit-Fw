@@ -11,6 +11,8 @@
 // Special Led pattern displays for each level
 // Auto maze adjusted time is reported (it is the actual time as it never hits the walls)
 //   but does not count for record times and does not show special LED pattern
+// NOTE very close to memory limit - have changed parameters for CC to smallest possible so less memory is
+//      used.
 //TODO
 // Add Sound
 // Could make better choice of led patterns so hard levels get better patterns
@@ -321,19 +323,21 @@ int16_t indSolution;
 int16_t indSolutionStep;
 int16_t indSolutionSubStep;
 int16_t numwallstodraw;
-uint8_t* xleft = NULL;
-uint8_t* xright = NULL;
-uint8_t* ytop = NULL;
-uint8_t* ybot = NULL;
-uint8_t* xsol = NULL;
-uint8_t* ysol = NULL;
+uint8_t xleft[MAXNUMWALLS];
+uint8_t xright[MAXNUMWALLS];
+uint8_t ytop[MAXNUMWALLS];
+uint8_t ybot[MAXNUMWALLS];
+// this is width*(height+1)/2 for most complicated level
+#define MAXNUMSOLS 882
+uint8_t xsol[MAXNUMSOLS];
+uint8_t ysol[MAXNUMSOLS];
 uint8_t flashcount = 0;
 uint8_t flashmax = 2;
 
-float* extendedScaledWallXleft = NULL;
-float* extendedScaledWallXright = NULL;
-float* extendedScaledWallYtop = NULL;
-float* extendedScaledWallYbot = NULL;
+float* extendedScaledWallXleft;
+float* extendedScaledWallXright;
+float* extendedScaledWallYtop;
+float* extendedScaledWallYbot;
 
 bool mazeDrawGalleryUnlock = false;
 
@@ -1282,12 +1286,12 @@ void ICACHE_FLASH_ATTR mzNewMazeSetUp(void)
 {
     //Allocate some working array memory now
     //TODO is memory being freed up appropriately?
-    xleft = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
-    xright = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
-    ytop = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
-    ybot = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
-    xsol = (uint8_t*)os_malloc (sizeof (uint8_t) * width * (height + 1) / 2);
-    ysol = (uint8_t*)os_malloc (sizeof (uint8_t) * width * (height + 1) / 2);
+    // xleft = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
+    // xright = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
+    // ytop = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
+    // ybot = (uint8_t*)os_malloc (sizeof (uint8_t) * MAXNUMWALLS);
+    // xsol = (uint8_t*)os_malloc (sizeof (uint8_t) * width * (height + 1) / 2);
+    // ysol = (uint8_t*)os_malloc (sizeof (uint8_t) * width * (height + 1) / 2);
     int16_t i;
     int16_t startvert = 0;
     get_maze_output_t out;
@@ -1476,12 +1480,12 @@ void ICACHE_FLASH_ATTR mzNewMazeSetUp(void)
  */
 void ICACHE_FLASH_ATTR mazeFreeMemory(void)
 {
-    os_free(xleft);
-    os_free(xright);
-    os_free(ytop);
-    os_free(ybot);
-    os_free(xsol);
-    os_free(ysol);
+    // os_free(xleft);
+    // os_free(xright);
+    // os_free(ytop);
+    // os_free(ybot);
+    // os_free(xsol);
+    // os_free(ysol);
     os_free(extendedScaledWallXleft);
     os_free(extendedScaledWallXright);
     os_free(extendedScaledWallYbot);
