@@ -1592,10 +1592,15 @@ void ICACHE_FLASH_ATTR cmNewSetup(subMethod_t subMode)
             cmLedMethod = RANDOM;
             cmUseShiftingColorWheel = false;
             break;
+
+        // note rollEndterMode is not using rollAccelerometerHandler
+        // so 0,1 give same and 10,11 give same thus need to specify cmUseHighPassAccel
         case ROLL_BALL:
+            cmUseHighPassAccel = false;
             rollEnterMode(0);
             break;
         case ROLL_3_BALLS:
+            cmUseHighPassAccel = true;
             rollEnterMode(11);
             break;
         case TILT_A_COLOR:
