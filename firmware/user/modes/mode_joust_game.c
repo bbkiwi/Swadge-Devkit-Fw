@@ -66,6 +66,20 @@ typedef enum
     R_WARNING
 } joustGameState_t;
 
+char stateName[10][19] =
+{
+    "R_MENU",
+    "R_SEARCHING",
+    "R_CONNECTING",
+    "R_SHOW_CONNECTION",
+    "R_PLAYING",
+    "R_PLAYINGFFA",
+    "R_WAITING",
+    "R_SHOW_GAME_RESULT",
+    "R_GAME_OVER",
+    "R_WARNING"
+};
+
 typedef enum
 {
     LED_OFF,
@@ -92,6 +106,7 @@ void ICACHE_FLASH_ATTR joustSendCb(uint8_t* mac_addr, mt_tx_status status);
 
 // Helper function
 void ICACHE_FLASH_ATTR joustRestart(void* arg __attribute__((unused)));
+void ICACHE_FLASH_ATTR joustRestartPlay(void* arg __attribute__((unused)));
 void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p, connectionEvt_t event);
 void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p, char* msg, uint8_t* payload, uint8_t len);
 void ICACHE_FLASH_ATTR joustMsgTxCbFn(p2pInfo* p2p, messageStatus_t status);
@@ -154,6 +169,7 @@ struct
     accel_t joustAccel;
     uint16_t rolling_average;
     uint32_t con_color;
+    playOrder_t playOrder;
     uint32_t FFACounter;
     uint16_t mov;
     uint16_t meterSize;
@@ -179,6 +195,7 @@ struct
         os_timer_t GameLed;
         os_timer_t RoundResultLed;
         os_timer_t RestartJoust;
+        os_timer_t RestartJoustPlay;
         os_timer_t ClearWarning;
         os_timer_t ScrollInstructions;
     } tmr;
@@ -200,7 +217,7 @@ struct
     int16_t instructionTextIdx;
 } joust;
 
-bool joustWarningShown = false;
+bool joustWarningShown = true;
 
 /*============================================================================
  * Functions
@@ -541,8 +558,8 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
         case CON_ESTABLISHED:
         {
             // Connection was successful, so disarm the failure timer
-
-            if(GOING_FIRST == p2pGetPlayOrder(&joust.p2pJoust))
+            joust.playOrder = p2pGetPlayOrder(&joust.p2pJoust);
+            if(GOING_FIRST == joust.playOrder)
             {
                 char color_string[32] = {0};
                 joust.con_color =  joust_rand(255);
@@ -584,11 +601,17 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
 {
     if(len > 0)
     {
-        joust_printf("%s %s %s\n", __func__, msg, payload);
+        joust_printf("%s %s %s %s\n", __func__, msg, payload, stateName[joust.gameState]);
     }
     else
     {
         joust_printf("%s %s\n", __func__, msg);
+    }
+
+    if(0 == ets_memcmp(msg, "col", 3))
+    {
+        joust.con_color =  atoi((const char*)payload);
+        joust_printf("Got message with color %d\r\n", joust.con_color);
     }
 
     switch(joust.gameState)
@@ -641,6 +664,7 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
             if(0 == ets_memcmp(msg, "col", 3))
             {
                 joust.con_color =  atoi((const char*)payload);
+                joust_printf("Got message with color %d\r\n", joust.con_color);
                 clearDisplay();
                 plotText(0, 0, "Found Player", IBM_VGA_8, WHITE);
                 plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
@@ -744,6 +768,9 @@ void ICACHE_FLASH_ATTR joustInit(void)
 
     os_timer_disarm(&joust.tmr.RestartJoust);
     os_timer_setfn(&joust.tmr.RestartJoust, joustRestart, NULL);
+
+    os_timer_disarm(&joust.tmr.RestartJoustPlay);
+    os_timer_setfn(&joust.tmr.RestartJoustPlay, joustRestartPlay, NULL);
 
     os_timer_disarm(&joust.tmr.RoundResultLed);
     os_timer_setfn(&joust.tmr.RoundResultLed, joustRoundResultLed, NULL);
@@ -911,6 +938,41 @@ void ICACHE_FLASH_ATTR joustRestart(void* arg __attribute__((unused)))
 {
     joustDeinit();
     joustInit();
+}
+
+/**
+ * Restart Play so keep existing connection
+ *
+ * @param arg unused
+ */
+void ICACHE_FLASH_ATTR joustRestartPlay(void* arg __attribute__((unused)))
+{
+    if(GOING_FIRST == joust.playOrder)
+    {
+        joust_printf("Restart Play as going first\n");
+        char color_string[32] = {0};
+        joust.con_color =  joust_rand(255);
+        ets_snprintf(color_string, sizeof(color_string), "%d", joust.con_color);
+        p2pSendMsg(&joust.p2pJoust, "col", color_string, sizeof(color_string), joustMsgTxCbFn);
+    }
+    else
+    {
+        joust_printf("Restart Play as going second\n");
+        joust.gameState = R_SEARCHING;
+    };
+
+    clearDisplay();
+    plotText(0, 0, "Found Player", IBM_VGA_8, WHITE);
+    plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
+    plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), "Not yours!", IBM_VGA_8, WHITE);
+
+    joustDisarmAllLedTimers();
+    // 6ms * ~500 steps == 3s animation
+    //This is the start of the game
+    joust.led.currBrightness = 0;
+    joust.led.ConnLedState = LED_CONNECTED_BRIGHT;
+    os_timer_arm(&joust.tmr.ShowConnectionLed, 50, true);
+
 }
 
 /**
@@ -1587,7 +1649,7 @@ void ICACHE_FLASH_ATTR joustRoundResult(int roundWinner)
         startBuzzerSong(&endGameSFX);
     }
     setJoustWins(joust.gam.joustWins);
-    os_timer_arm(&joust.tmr.RestartJoust, 6000, false);
+    os_timer_arm(&joust.tmr.RestartJoustPlay, 6000, false);
 }
 
 /**
