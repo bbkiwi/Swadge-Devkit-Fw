@@ -25,10 +25,7 @@
 #include "oled.h"
 #include "font.h"
 #include "embeddedout.h"
-#include "buzzer.h" // music and sfx
-#include "hpatimer.h" // buzzer functions
 #include "bresenham.h"
-#include "fastlz.h"
 #include "mode_tiltrads.h"
 
 /*============================================================================
@@ -54,10 +51,8 @@ typedef enum
     R_CONNECTING,
     R_SHOW_CONNECTION,
     R_PLAYING,
-    R_WAITING,
     R_SHOW_GAME_RESULT,
     R_GAME_OVER,
-    R_WARNING
 } joustGameState_t;
 
 char stateName[9][19] =
@@ -67,10 +62,8 @@ char stateName[9][19] =
     "R_CONNECTING",
     "R_SHOW_CONNECTION",
     "R_PLAYING",
-    "R_WAITING",
     "R_SHOW_GAME_RESULT",
     "R_GAME_OVER",
-    "R_WARNING"
 };
 
 typedef enum
@@ -128,7 +121,6 @@ void ICACHE_FLASH_ATTR joustRoundResultLed(void* arg __attribute__((unused)));
 void ICACHE_FLASH_ATTR joustRoundResult(int);
 
 void ICACHE_FLASH_ATTR joustUpdateDisplay(void);
-void ICACHE_FLASH_ATTR joustDisplayWarning(void);
 void ICACHE_FLASH_ATTR joustDrawMenu(void);
 void ICACHE_FLASH_ATTR joustScrollInstructions(void* arg);
 
@@ -180,7 +172,6 @@ struct
         os_timer_t RoundResultLed;
         os_timer_t RestartJoust;
         os_timer_t RestartJoustPlay;
-        os_timer_t ClearWarning;
         os_timer_t ScrollInstructions;
     } tmr;
 
@@ -189,7 +180,6 @@ struct
     {
         led_t Leds[6];
         connLedState_t ConnLedState;
-        sint16_t Degree;
         uint8_t connectionDim;
         uint8_t digitToDisplay;
         uint8_t ledsLit;
@@ -230,7 +220,7 @@ uint32_t ICACHE_FLASH_ATTR joust_rand(uint32_t bound)
 
 void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unused)), connectionEvt_t event)
 {
-    os_printf("%s %d\n", __func__, event);
+    os_printf("%s %s\n", __func__, conEvtName[event]);
     switch(event)
     {
         case CON_STARTED:
@@ -247,7 +237,6 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
         }
         case CON_ESTABLISHED:
         {
-            // Connection was successful, so disarm the failure timer
             joust.playOrder = p2pGetPlayOrder(&joust.p2pJoust);
             if(GOING_FIRST == joust.playOrder)
             {
@@ -289,13 +278,15 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
 void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), char* msg, uint8_t* payload,
         uint8_t len __attribute__((unused)))
 {
+    joust_printf("%s %s %s ", __func__, stateName[joust.gameState], msg);
     if(len > 0)
     {
-        joust_printf("%s %s %s %s\n", __func__, msg, payload, stateName[joust.gameState]);
+        joust_printf(" %s\n", payload);
     }
     else
     {
-        joust_printf("%s %s\n", __func__, msg);
+        joust_printf("\n");
+
     }
 
     if(0 == ets_memcmp(msg, "col", 3))
@@ -306,15 +297,7 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
 
     switch(joust.gameState)
     {
-        case R_WARNING:
-        {
-            break;
-        }
         case R_CONNECTING:
-        {
-            break;
-        }
-        case R_WAITING:
         {
             break;
         }
@@ -349,8 +332,7 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
         case R_MENU:
         case R_SEARCHING:
         {
-            //other sends color and elo first
-            //then send our elo
+            //TODO needed?
             if(0 == ets_memcmp(msg, "col", 3))
             {
                 clearDisplay();
@@ -453,7 +435,7 @@ void ICACHE_FLASH_ATTR joustDrawMenu(void)
     clearDisplay();
 
     // Draw title
-    plotText(27, textY, "Magfestons", RADIOSTARS, WHITE);
+    plotText(5, textY, "Magfestons", RADIOSTARS, WHITE);
     textY += FONT_HEIGHT_RADIOSTARS + Y_MARGIN;
     // Draw instruction ticker
     if (0 > plotText(joust.instructionTextIdx, textY,
@@ -462,108 +444,31 @@ void ICACHE_FLASH_ATTR joustDrawMenu(void)
     {
         joust.instructionTextIdx = OLED_WIDTH;
     }
-    textY += FONT_HEIGHT_IBMVGA8 + Y_MARGIN;
-    // Draw level info. First figure out what level we're at
-    int16_t nextLevel = 0;
-    char lvlStr[32] = {0};
-    if(joust.gam.joustWins < 4)
-    {
-        memcpy(lvlStr, "Serf Simian", sizeof("Serf Simian"));
-        nextLevel = 4;
-    }
-    else if(joust.gam.joustWins < 8)
-    {
-        memcpy(lvlStr, "Peasant Primate", sizeof("Peasant Primate"));
-        nextLevel = 8;
-    }
-    else if(joust.gam.joustWins < 12)
-    {
-        memcpy(lvlStr, "Page Probocsis", sizeof("Page Probocsis"));
-        nextLevel = 12;
-    }
-    else if(joust.gam.joustWins < 16)
-    {
-        memcpy(lvlStr, "Squire Saki", sizeof("Squire Saki"));
-        nextLevel = 16;
-    }
-    else if(joust.gam.joustWins < 22)
-    {
-        memcpy(lvlStr, "Apprentice Ape", sizeof("Apprentice Ape"));
-        nextLevel = 22;
-    }
-    else if(joust.gam.joustWins < 28)
-    {
-        memcpy(lvlStr, "Maester Mandrill", sizeof("Maester Mandrill"));
-        nextLevel = 28;
-    }
-    else if(joust.gam.joustWins < 36)
-    {
-        memcpy(lvlStr, "Thane Tamarin", sizeof("Thane Tamarin"));
-        nextLevel = 36;
-    }
-    else if(joust.gam.joustWins < 44)
-    {
-        memcpy(lvlStr, "Lord Lemur", sizeof("Lord Lemur"));
-        nextLevel = 44;
-    }
-    else if(joust.gam.joustWins < 60)
-    {
-        memcpy(lvlStr, "Baron Baboon", sizeof("Baron Baboon"));
-        nextLevel = 60;
-    }
-    else if(joust.gam.joustWins < 100)
-    {
-        memcpy(lvlStr, "Viscount Vervet", sizeof("Viscount Vervet"));
-    }
-    else
-    {
-        memcpy(lvlStr, "Grandmaster Gorilla", sizeof("Grandmaster Gorilla"));
-    }
-
-    char menuStr[64] = {0};
-    // First row, left justified
-    ets_snprintf(menuStr, sizeof(menuStr), "%d Wins!", joust.gam.joustWins);
-    plotText(0, textY, menuStr, TOM_THUMB, WHITE);
-
-    // First row, right justified, maybe
-    if(0 != nextLevel)
-    {
-        ets_snprintf(menuStr, sizeof(menuStr), "Next lvl at %d wins", nextLevel);
-        plotText(OLED_WIDTH - getTextWidth(menuStr, TOM_THUMB), textY, menuStr, TOM_THUMB, WHITE);
-    }
-    textY += FONT_HEIGHT_TOMTHUMB + Y_MARGIN;
-
-    // Second row
-    ets_snprintf(menuStr, sizeof(menuStr), "You are a %s", lvlStr);
-    plotText(0, textY, menuStr, TOM_THUMB, WHITE);
-    textY += FONT_HEIGHT_TOMTHUMB + Y_MARGIN;
-
-
 
     // Draw button labels
     plotRect(
         -1,
         OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB - 4,
-        getTextWidth("Not Used Here", TOM_THUMB) + 3,
+        getTextWidth("Connect Left", TOM_THUMB) + 3,
         OLED_HEIGHT + 1,
         WHITE);
     plotText(
         0,
         OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB,
-        "Not Used Here",
+        "Connect Left",
         TOM_THUMB,
         WHITE);
 
     plotRect(
-        OLED_WIDTH - getTextWidth("2 Player", TOM_THUMB) - 4,
+        OLED_WIDTH - getTextWidth("Connect Right", TOM_THUMB) - 4,
         OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB - 4,
         OLED_WIDTH + 1,
         OLED_HEIGHT + 1,
         WHITE);
     plotText(
-        OLED_WIDTH - getTextWidth("2 Player", TOM_THUMB),
+        OLED_WIDTH - getTextWidth("Connect Right", TOM_THUMB),
         OLED_HEIGHT - FONT_HEIGHT_TOMTHUMB,
-        "2 Player",
+        "Connect Right",
         TOM_THUMB,
         WHITE);
 }
@@ -588,6 +493,7 @@ void ICACHE_FLASH_ATTR joustDeinit(void)
     p2pDeinit(&joust.p2pJoust);
     os_timer_disarm(&joust.tmr.StartPlaying);
     os_timer_disarm(&joust.tmr.RestartJoust);
+    os_timer_disarm(&joust.tmr.RestartJoustPlay);
     joustDisarmAllLedTimers();
 }
 
@@ -624,7 +530,7 @@ void ICACHE_FLASH_ATTR joustRestartPlay(void* arg __attribute__((unused)))
     };
 
     clearDisplay();
-    plotText(0, 0, "Found Player", IBM_VGA_8, WHITE);
+    plotText(0, 0, "Same Player", IBM_VGA_8, WHITE);
     plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
     plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), "Not yours!", IBM_VGA_8, WHITE);
 
@@ -1161,5 +1067,5 @@ void ICACHE_FLASH_ATTR joustRoundResult(int roundWinner)
         plotText(0, 0, "Loser", IBM_VGA_8, WHITE);
     }
     setJoustWins(joust.gam.joustWins);
-    os_timer_arm(&joust.tmr.RestartJoustPlay, 6000, false);
+    os_timer_arm(&joust.tmr.RestartJoustPlay, 2000, false);
 }

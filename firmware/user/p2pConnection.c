@@ -81,6 +81,15 @@ const char p2pNoPayloadMsgFmt[]  = "%s_%s_%02d_%02X:%02X:%02X:%02X:%02X:%02X";
 const char p2pPayloadMsgFmt[]    = "%s_%s_%02d_%02X:%02X:%02X:%02X:%02X:%02X_%s";
 const char p2pMacFmt[] = "%02X:%02X:%02X:%02X:%02X:%02X";
 
+char conEvtName[5][19] =
+{
+    "CON_STARTED",
+    "RX_GAME_START_ACK",
+    "RX_GAME_START_MSG",
+    "CON_ESTABLISHED",
+    "CON_LOST"
+};
+
 /*============================================================================
  * Function Prototypes
  *==========================================================================*/

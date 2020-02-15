@@ -69,6 +69,7 @@
         "fastlz.h": "c",
         "menuimages.h": "c",
         "math.h": "c",
-        "cnlohr_i2c.h": "c"
+        "cnlohr_i2c.h": "c",
+        "*.tcc": "c"
     }
 }
