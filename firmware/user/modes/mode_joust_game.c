@@ -14,6 +14,7 @@
 #include <osapi.h>
 #include <user_interface.h>
 #include <p2pConnection.h>
+#include "espNowUtils.h"
 #include <math.h>
 #include <stdlib.h>
 #include <mem.h>
@@ -221,6 +222,7 @@ uint32_t ICACHE_FLASH_ATTR joust_rand(uint32_t bound)
 void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unused)), connectionEvt_t event)
 {
     os_printf("%s %s\n", __func__, conEvtName[event]);
+    espNowPrintInfo();
     switch(event)
     {
         case CON_STARTED:

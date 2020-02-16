@@ -43,7 +43,7 @@ void ICACHE_FLASH_ATTR espNowInit(void)
     // Set up all the wifi softAP mode configs
     if(false == wifi_set_opmode_current(SOFTAP_MODE))
     {
-        os_printf("Could not set as station mode\r\n");
+        os_printf("Could not set as softap mode\r\n");
         return;
     }
 
@@ -236,4 +236,67 @@ void ICACHE_FLASH_ATTR espNowDeinit(void)
     esp_now_unregister_recv_cb();
     esp_now_unregister_send_cb();
     esp_now_deinit();
+}
+
+/**
+ * Get Info
+ */
+void ICACHE_FLASH_ATTR espNowPrintInfo(void)
+{
+    uint8_t all_cnt = 0;
+    uint8_t encryp_cnt = 0;
+    uint8_t* mac_addr;
+    uint8_t total_cnt;
+    int i;
+
+    os_printf("Self role %d\n", esp_now_get_self_role());
+    if (0 == esp_now_get_cnt_info(&all_cnt, &encryp_cnt))
+    {
+        os_printf("all_cnt %d, encryp_cnt %d\n", (int)all_cnt, (int)encryp_cnt);
+        total_cnt = all_cnt + encryp_cnt;
+        if (total_cnt == 0)
+        {
+            os_printf("esp_now_get_cnt_info() returned 0 connections\n");
+        }
+        else
+        {
+            mac_addr = esp_now_fetch_peer(true);
+            if (!(mac_addr == NULL))
+            {
+                os_printf("MAC [%02X:%02X:%02X:%02X:%02X:%02X]\n",
+                          mac_addr[0],
+                          mac_addr[1],
+                          mac_addr[2],
+                          mac_addr[3],
+                          mac_addr[4],
+                          mac_addr[5]);
+            }
+            else
+            {
+                os_printf("esp_now_fetch_peer(true) returned NULL!\n");
+            }
+            for (i = 1; i < total_cnt; i++)
+            {
+                mac_addr = esp_now_fetch_peer(false);
+                if (!(mac_addr == NULL))
+                {
+                    os_printf("MAC [%02X:%02X:%02X:%02X:%02X:%02X]\n",
+                              mac_addr[0],
+                              mac_addr[1],
+                              mac_addr[2],
+                              mac_addr[3],
+                              mac_addr[4],
+                              mac_addr[5]);
+                }
+                else
+                {
+                    os_printf("esp_now_fetch_peer(flase) for i=%d returned NULL!\n", i);
+                }
+            }
+        }
+    }
+    else
+    {
+        os_printf("esp_now_get_cnt_info() failed\n");
+    }
 }

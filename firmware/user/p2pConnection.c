@@ -43,6 +43,7 @@ end
 #include <user_interface.h>
 #include <mem.h>
 
+#include <espnow.h>
 #include "user_main.h"
 #include "p2pConnection.h"
 
@@ -726,6 +727,10 @@ void ICACHE_FLASH_ATTR p2pProcConnectionEvt(p2pInfo* p2p, connectionEvt_t event)
         os_timer_disarm(&p2p->tmr.Reinit);
 
         p2p->cnc.isConnected = true;
+
+        // add to peer list
+        esp_now_add_peer(p2p->cnc.otherMac, ESP_NOW_ROLE_COMBO, SOFTAP_CHANNEL, NULL, 0);
+
 
         // tell the mode it's connected
         if(NULL != p2p->conCbFn)

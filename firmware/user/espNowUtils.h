@@ -14,5 +14,6 @@
 
 void ICACHE_FLASH_ATTR espNowInit(void);
 void ICACHE_FLASH_ATTR espNowDeinit(void);
+void ICACHE_FLASH_ATTR espNowPrintInfo(void);
 
 #endif /* USER_ESPNOWUTILS_H_ */
