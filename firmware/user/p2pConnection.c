@@ -571,7 +571,8 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
         return;
     }
 
-    if(false == p2p->cnc.isConnected)
+    //if(false == p2p->cnc.isConnected)
+    if(true)
     {
         // Received another broadcast, Check if this RSSI is strong enough
         if(!p2p->cnc.broadcastReceived &&
@@ -581,7 +582,7 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
         {
 
             // We received a broadcast, don't allow another
-            p2p->cnc.broadcastReceived = true;
+            //p2p->cnc.broadcastReceived = true;
 
             // Save the other ESP's MAC
             ets_memcpy(p2p->cnc.otherMac, mac_addr, sizeof(p2p->cnc.otherMac));
@@ -616,9 +617,10 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
             // And process this connection event
             p2pProcConnectionEvt(p2p, RX_GAME_START_MSG);
         }
-        return;
+        //return;
     }
-    else
+    //else
+    if(true)
     {
         p2p_printf("cnc.isconnected is true\r\n");
         // Let the mode handle it
