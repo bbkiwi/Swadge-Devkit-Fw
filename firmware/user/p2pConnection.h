@@ -69,6 +69,7 @@ typedef struct _p2pInfo
         playOrder_t playOrder;
         char macStr[18];
         uint8_t otherMac[6];
+        char otherMacStr[18];
         bool otherMacReceived;
         uint8_t mySeqNum;
         uint8_t lastSeqNum;

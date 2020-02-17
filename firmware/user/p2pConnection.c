@@ -473,6 +473,7 @@ void ICACHE_FLASH_ATTR p2pSendMsgEx(p2pInfo* p2p, char* msg, uint16_t len,
  * @param data     The data
  * @param len      The length of the data
  * @param rssi     The RSSI of th received message, a proxy for distance
+ * TODO not return of false or true - want this?
  * @return false if the message was processed here,
  *         true if the message should be processed by the swadge mode
  */
@@ -683,6 +684,14 @@ void ICACHE_FLASH_ATTR p2pProcConnectionEvt(p2pInfo* p2p, connectionEvt_t event)
 {
     p2p_printf("%s evt: %d, p2p->cnc.rxGameStartMsg %d, p2p->cnc.rxGameStartAck %d\r\n", __func__, event,
                p2p->cnc.rxGameStartMsg, p2p->cnc.rxGameStartAck);
+
+    ets_snprintf(p2p->cnc.otherMacStr, sizeof(p2p->cnc.otherMacStr), p2pMacFmt,
+                 p2p->cnc.otherMac[0],
+                 p2p->cnc.otherMac[1],
+                 p2p->cnc.otherMac[2],
+                 p2p->cnc.otherMac[3],
+                 p2p->cnc.otherMac[4],
+                 p2p->cnc.otherMac[5]);
 
     switch(event)
     {

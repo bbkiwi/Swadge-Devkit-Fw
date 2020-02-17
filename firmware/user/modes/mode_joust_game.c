@@ -532,16 +532,16 @@ void ICACHE_FLASH_ATTR joustRestartPlay(void* arg __attribute__((unused)))
     };
 
     clearDisplay();
-    plotText(0, 0, "Same Player", IBM_VGA_8, WHITE);
-    plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
-    plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), "Not yours!", IBM_VGA_8, WHITE);
+    // plotText(0, 0, "Same Player", IBM_VGA_8, WHITE);
+    // plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
+    // plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), "Not yours!", IBM_VGA_8, WHITE);
 
     joustDisarmAllLedTimers();
     // 6ms * ~500 steps == 3s animation
     //This is the start of the game
     joust.led.currBrightness = 0;
     joust.led.ConnLedState = LED_CONNECTED_BRIGHT;
-    os_timer_arm(&joust.tmr.ShowConnectionLed, 50, true);
+    os_timer_arm(&joust.tmr.ShowConnectionLed, 50, false);
 
 }
 
@@ -590,38 +590,6 @@ void ICACHE_FLASH_ATTR joustRecvCb(uint8_t* mac_addr, uint8_t* data, uint8_t len
  */
 void ICACHE_FLASH_ATTR joustShowConnectionLedTimeout(void* arg __attribute__((unused)) )
 {
-    switch(joust.led.ConnLedState)
-    {
-        case LED_CONNECTED_BRIGHT:
-        {
-            joust.led.currBrightness = joust.led.currBrightness + 5;
-            if(joust.led.currBrightness > 200)
-            {
-                joust.led.ConnLedState = LED_CONNECTED_DIM;
-            }
-            break;
-        }
-        case LED_CONNECTED_DIM:
-        {
-            joust.led.currBrightness = joust.led.currBrightness - 5;
-            if(joust.led.currBrightness < 10 )
-            {
-                joustStartPlaying(NULL);
-            }
-            break;
-        }
-        case LED_OFF:
-        case LED_ON_1:
-        case LED_DIM_1:
-        case LED_ON_2:
-        case LED_DIM_2:
-        case LED_OFF_WAIT:
-        default:
-        {
-            // No other cases handled
-            break;
-        }
-    }
     uint8_t i;
     for(i = 0; i < 6; i++)
     {
@@ -629,8 +597,8 @@ void ICACHE_FLASH_ATTR joustShowConnectionLedTimeout(void* arg __attribute__((un
         joust.led.Leds[i].g = (EHSVtoHEX(joust.con_color, 255,  joust.led.currBrightness) >>  8) & 0xFF;
         joust.led.Leds[i].b = (EHSVtoHEX(joust.con_color, 255,  joust.led.currBrightness) >> 16) & 0xFF;
     }
-
     setLeds(joust.led.Leds, sizeof(joust.led.Leds));
+    joustStartPlaying(NULL);
 }
 
 
@@ -735,21 +703,14 @@ void ICACHE_FLASH_ATTR joustUpdateDisplay(void)
     }
 
     // Draw a title
-    if(0 < showWarningFrames)
-    {
-        plotCenteredText(0, 0, OLED_WIDTH, "!! Warning !!", RADIOSTARS, WHITE);
-    }
-    else
-    {
-        plotCenteredText(0, 0, OLED_WIDTH, "Joust Meter", RADIOSTARS, WHITE);
-    }
-
+    plotCenteredText(0, 0, OLED_WIDTH, &joust.p2pJoust.cnc.macStr[0], IBM_VGA_8, WHITE);
+    plotCenteredText(0, 12, OLED_WIDTH, &joust.p2pJoust.cnc.otherMacStr[0], IBM_VGA_8, WHITE);
     // Display the acceleration on the display
     plotRect(
         0,
-        (OLED_HEIGHT / 2 - 18) + 5,
+        (OLED_HEIGHT / 2 - 13) + 10,
         OLED_WIDTH - 2,
-        (OLED_HEIGHT / 2 + 18) + 5,
+        (OLED_HEIGHT / 2 + 13) + 10,
         WHITE);
 
     // Find the difference from the rolling average, scale it to 220px (5px margin on each side)
@@ -784,9 +745,9 @@ void ICACHE_FLASH_ATTR joustUpdateDisplay(void)
     // draw it
     fillDisplayArea(
         5,
-        (OLED_HEIGHT / 2 - 14) + 5,
+        (OLED_HEIGHT / 2 - 10) + 10,
         5 + joust.meterSize,
-        (OLED_HEIGHT / 2 + 14) + 5,
+        (OLED_HEIGHT / 2 + 10) + 10,
         WHITE);
 }
 
@@ -803,18 +764,9 @@ void ICACHE_FLASH_ATTR joustAccelerometerHandler(accel_t* accel)
         joust.joustAccel.z = accel->z;
         joust.mov = (uint16_t) sqrt(pow(joust.joustAccel.x, 2) + pow(joust.joustAccel.y, 2) + pow(joust.joustAccel.z, 2));
         joust.rolling_average = (joust.rolling_average * 2 + joust.mov) / 3;
-
         if (joust.gameState == R_PLAYING)
         {
-            if(joust.mov > joust.rolling_average + 43)
-            {
-                joust.gameState = R_GAME_OVER;
-                joustSendRoundLossMsg();
-            }
-            else
-            {
-                joustUpdateDisplay();
-            }
+            joustUpdateDisplay();
         }
     }
 }
@@ -955,9 +907,14 @@ void ICACHE_FLASH_ATTR joustButton( uint8_t state __attribute__((unused)),
         {
         }
     }
-    else if(joust.gameState == R_SHOW_GAME_RESULT || joust.gameState == R_SEARCHING)
+    else if(joust.gameState == R_PLAYING)
     {
-        if(1 == button || 2 == button)
+        if(2 == button)
+        {
+            joust.gameState = R_GAME_OVER;
+            joustSendRoundLossMsg();
+        }
+        else if(1 == button)
         {
             os_timer_arm(&joust.tmr.RestartJoust, 10, false);
         }
@@ -1069,5 +1026,5 @@ void ICACHE_FLASH_ATTR joustRoundResult(int roundWinner)
         plotText(0, 0, "Loser", IBM_VGA_8, WHITE);
     }
     setJoustWins(joust.gam.joustWins);
-    os_timer_arm(&joust.tmr.RestartJoustPlay, 2000, false);
+    os_timer_arm(&joust.tmr.RestartJoustPlay, 1000, false);
 }
