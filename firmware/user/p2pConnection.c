@@ -415,14 +415,14 @@ void ICACHE_FLASH_ATTR p2pSendMsgEx(p2pInfo* p2p, char* msg, uint16_t len,
     if( (p2p->ack.msgToAck != msg) && ets_strlen(p2p->conMsg) < len)
     {
         // Insert a sequence number
-        msg[SEQ_IDX + 0] = '0' + (p2p->cnc.mySeqNum / 10);
-        msg[SEQ_IDX + 1] = '0' + (p2p->cnc.mySeqNum % 10);
+        msg[SEQ_IDX + 0] = '0' + (p2p->cnc.myMsgSeqNum / 10);
+        msg[SEQ_IDX + 1] = '0' + (p2p->cnc.myMsgSeqNum % 10);
 
         // Increment the sequence number, 0-99
-        p2p->cnc.mySeqNum++;
-        if(100 == p2p->cnc.mySeqNum++)
+        p2p->cnc.myMsgSeqNum++;
+        if(100 == p2p->cnc.myMsgSeqNum++)
         {
-            p2p->cnc.mySeqNum = 0;
+            p2p->cnc.myMsgSeqNum = 0;
         }
     }
 
@@ -462,6 +462,7 @@ void ICACHE_FLASH_ATTR p2pSendMsgEx(p2pInfo* p2p, char* msg, uint16_t len,
         // started in p2pSendCb()
         p2p->ack.timeSentUs = system_get_time();
     }
+    //TODO why is this using broadcasts only? how is mac be used?
     espNowSend((const uint8_t*)msg, len);
 }
 
@@ -486,6 +487,7 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
     os_free(dbgMsg);
 #endif
 
+    //TODO Could reject weak signal immediately rssi > REJECTION_RSSI
     // Check if this message matches our message ID
     if(len < CMD_IDX ||
             (0 != ets_memcmp(data, p2p->conMsg, CMD_IDX)))
@@ -504,13 +506,15 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
         return;
     }
 
-    // If this is anything besides a broadcast, check the other MAC
+    // If this is anything besides a broadcast, check the other MACs
+
     if(p2p->cnc.otherMacReceived &&
             len > ets_strlen(p2p->conMsg) &&
             0 != ets_memcmp(mac_addr, p2p->cnc.otherMac, sizeof(p2p->cnc.otherMac)))
+            //!esp_now_is_peer_exist(p2p->cnc.otherMac))
     {
-        // This isn't from the other known swadge
-        p2p_printf("DISCARD: Not from the other MAC\r\n");
+        // This isn't from the other known swadges that are neighbors
+        p2p_printf("DISCARD: Not from the other MACs\r\n");
         return;
     }
 
@@ -572,8 +576,7 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
         return;
     }
 
-    //if(false == p2p->cnc.isConnected)
-    if(true)
+    if(false == p2p->cnc.isConnectedOnRight) // if need a right neighbor
     {
         // Received another broadcast, Check if this RSSI is strong enough
         if(!p2p->cnc.broadcastReceived &&
@@ -581,9 +584,9 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
                 ets_strlen(p2p->conMsg) == len &&
                 0 == ets_memcmp(data, p2p->conMsg, len))
         {
-
-            // We received a broadcast, don't allow another
-            //p2p->cnc.broadcastReceived = true;
+            p2p->cnc.rightRssi = rssi;
+            // We accepted this broadcast, don't allow another
+            p2p->cnc.broadcastReceived = true;
 
             // Save the other ESP's MAC
             ets_memcpy(p2p->cnc.otherMac, mac_addr, sizeof(p2p->cnc.otherMac));
@@ -618,12 +621,11 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
             // And process this connection event
             p2pProcConnectionEvt(p2p, RX_GAME_START_MSG);
         }
-        //return;
+        return;
     }
-    //else
-    if(true)
+    else // have a right neighbor
     {
-        p2p_printf("cnc.isconnected is true\r\n");
+        p2p_printf("cnc.isconnectedOnRight is true\r\n");
         // Let the mode handle it
         if(NULL != p2p->msgRxCbFn)
         {
@@ -737,7 +739,7 @@ void ICACHE_FLASH_ATTR p2pProcConnectionEvt(p2pInfo* p2p, connectionEvt_t event)
         // Connection was successful, so disarm the failure timer
         os_timer_disarm(&p2p->tmr.Reinit);
 
-        p2p->cnc.isConnected = true;
+        p2p->cnc.isConnectedOnRight = true;
 
         // add to peer list
         esp_now_add_peer(p2p->cnc.otherMac, ESP_NOW_ROLE_COMBO, SOFTAP_CHANNEL, NULL, 0);
@@ -862,7 +864,7 @@ void ICACHE_FLASH_ATTR p2pSendCb(p2pInfo* p2p, uint8_t* mac_addr __attribute__((
  */
 playOrder_t ICACHE_FLASH_ATTR p2pGetPlayOrder(p2pInfo* p2p)
 {
-    if(p2p->cnc.isConnected)
+    if(p2p->cnc.isConnectedOnRight)
     {
         return p2p->cnc.playOrder;
     }

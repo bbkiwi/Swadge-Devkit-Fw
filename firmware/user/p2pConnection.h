@@ -62,16 +62,26 @@ typedef struct _p2pInfo
     // Connection state variables
     struct
     {
-        bool isConnected;
+        bool isConnectedOnRight;
+        bool isConnectedOnLeft;
         bool broadcastReceived;
         bool rxGameStartMsg;
         bool rxGameStartAck;
         playOrder_t playOrder;
         char macStr[18];
         uint8_t otherMac[6];
+        uint8_t rightMac[6];
+        uint8_t leftMac[6];
+        uint8_t myIdNum;
+        uint8_t rightIdNum;
+        uint8_t leftIdNum;
+        uint8_t rightRssi;
+        uint8_t leftRssi;
         char otherMacStr[18];
+        char rightMacStr[18];
+        char leftMacStr[18];
         bool otherMacReceived;
-        uint8_t mySeqNum;
+        uint8_t myMsgSeqNum;
         uint8_t lastSeqNum;
     } cnc;
 

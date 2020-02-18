@@ -885,6 +885,12 @@ void ICACHE_FLASH_ATTR joustButton( uint8_t state __attribute__((unused)),
         return;
     }
 
+    // No matter what state left button bails out and restarts
+    if(1 == button)
+    {
+        os_timer_arm(&joust.tmr.RestartJoust, 10, false);
+    }
+
     if(joust.gameState == R_MENU)
     {
         // Stop the scrolling text
@@ -903,9 +909,6 @@ void ICACHE_FLASH_ATTR joustButton( uint8_t state __attribute__((unused)),
 
 
         }
-        else if(1 == button)
-        {
-        }
     }
     else if(joust.gameState == R_PLAYING)
     {
@@ -913,10 +916,6 @@ void ICACHE_FLASH_ATTR joustButton( uint8_t state __attribute__((unused)),
         {
             joust.gameState = R_GAME_OVER;
             joustSendRoundLossMsg();
-        }
-        else if(1 == button)
-        {
-            os_timer_arm(&joust.tmr.RestartJoust, 10, false);
         }
     }
 }
