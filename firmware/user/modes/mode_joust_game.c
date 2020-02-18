@@ -7,6 +7,13 @@
  *
  */
 
+// TODO see 268
+// A Button 1,2 or start mode, 2 wait any time then B quick 1,2 connects
+// If on B wait between 1 and 2 get time out then
+//    both A and B stuck on searching screen
+// Pushing 1,2 on A doesn't seem to unstick but
+// Pushing 1,2 quick on B, then on A gets back to connection
+
 /*============================================================================
  * Includes
  *==========================================================================*/
@@ -221,7 +228,7 @@ uint32_t ICACHE_FLASH_ATTR joust_rand(uint32_t bound)
 
 void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unused)), connectionEvt_t event)
 {
-    os_printf("%s %s\n", __func__, conEvtName[event]);
+    os_printf("%s %s >>>\n", __func__, conEvtName[event]);
     espNowPrintInfo();
     switch(event)
     {
@@ -247,7 +254,7 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
                 ets_snprintf(color_string, sizeof(color_string), "%d", joust.con_color);
                 p2pSendMsg(&joust.p2pJoust, "col", color_string, sizeof(color_string), joustMsgTxCbFn);
             }
-            joust_printf("connection established\n");
+            joust_printf("   connection established\n");
             clearDisplay();
             plotText(0, 0, "Found Player", IBM_VGA_8, WHITE);
             plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
@@ -265,6 +272,8 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
         default:
         case CON_LOST:
         {
+            //TODO Did this fix hang?
+            joust.gameState = R_MENU;
             break;
         }
     }
@@ -279,11 +288,12 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
  */
 void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), char* msg, uint8_t* payload,
         uint8_t len __attribute__((unused)))
+//TODO fix print below of len and payload as could be funny characters
 {
     joust_printf("%s %s %s ", __func__, stateName[joust.gameState], msg);
     if(len > 0)
     {
-        joust_printf(" %s\n", payload);
+        joust_printf(" len=%d, %s\n", len, payload);
     }
     else
     {

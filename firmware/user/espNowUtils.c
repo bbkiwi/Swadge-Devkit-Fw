@@ -249,21 +249,21 @@ void ICACHE_FLASH_ATTR espNowPrintInfo(void)
     uint8_t total_cnt;
     int i;
 
-    os_printf("Self role %d\n", esp_now_get_self_role());
+    os_printf(">>>Self role %d\n", esp_now_get_self_role());
     if (0 == esp_now_get_cnt_info(&all_cnt, &encryp_cnt))
     {
-        os_printf("all_cnt %d, encryp_cnt %d\n", (int)all_cnt, (int)encryp_cnt);
+        os_printf(">>>all_cnt %d, encryp_cnt %d\n", (int)all_cnt, (int)encryp_cnt);
         total_cnt = all_cnt + encryp_cnt;
         if (total_cnt == 0)
         {
-            os_printf("esp_now_get_cnt_info() returned 0 connections\n");
+            os_printf(">>>esp_now_get_cnt_info() returned 0 connections\n");
         }
         else
         {
             mac_addr = esp_now_fetch_peer(true);
             if (!(mac_addr == NULL))
             {
-                os_printf("MAC [%02X:%02X:%02X:%02X:%02X:%02X]\n",
+                os_printf(">>>MAC [%02X:%02X:%02X:%02X:%02X:%02X]\n",
                           mac_addr[0],
                           mac_addr[1],
                           mac_addr[2],
@@ -273,14 +273,14 @@ void ICACHE_FLASH_ATTR espNowPrintInfo(void)
             }
             else
             {
-                os_printf("esp_now_fetch_peer(true) returned NULL!\n");
+                os_printf(">>>esp_now_fetch_peer(true) returned NULL!\n");
             }
             for (i = 1; i < total_cnt; i++)
             {
                 mac_addr = esp_now_fetch_peer(false);
                 if (!(mac_addr == NULL))
                 {
-                    os_printf("MAC [%02X:%02X:%02X:%02X:%02X:%02X]\n",
+                    os_printf(">>>MAC [%02X:%02X:%02X:%02X:%02X:%02X]\n",
                               mac_addr[0],
                               mac_addr[1],
                               mac_addr[2],
@@ -290,13 +290,13 @@ void ICACHE_FLASH_ATTR espNowPrintInfo(void)
                 }
                 else
                 {
-                    os_printf("esp_now_fetch_peer(flase) for i=%d returned NULL!\n", i);
+                    os_printf(">>>esp_now_fetch_peer(flase) for i=%d returned NULL!\n", i);
                 }
             }
         }
     }
     else
     {
-        os_printf("esp_now_get_cnt_info() failed\n");
+        os_printf(">>>esp_now_get_cnt_info() failed\n");
     }
 }
