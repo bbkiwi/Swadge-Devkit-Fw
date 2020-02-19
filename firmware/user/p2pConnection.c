@@ -98,7 +98,6 @@ char conEvtName[5][19] =
 void ICACHE_FLASH_ATTR p2pConnectionTimeout(void* arg);
 void ICACHE_FLASH_ATTR p2pTxAllRetriesTimeout(void* arg);
 void ICACHE_FLASH_ATTR p2pTxRetryTimeout(void* arg);
-void ICACHE_FLASH_ATTR p2pRestart(void* arg);
 void ICACHE_FLASH_ATTR p2pStartRestartTimer(void* arg);
 void ICACHE_FLASH_ATTR p2pProcConnectionEvt(p2pInfo* p2p, connectionEvt_t event);
 void ICACHE_FLASH_ATTR p2pGameStartAckRecv(void* arg);

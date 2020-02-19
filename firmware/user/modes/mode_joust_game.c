@@ -7,12 +7,15 @@
  *
  */
 
-// TODO see 268
+
+// Almost
 // A Button 1,2 or start mode, 2 wait any time then B quick 1,2 connects
-// If on B wait between 1 and 2 get time out then
-//    both A and B stuck on searching screen
-// Pushing 1,2 on A doesn't seem to unstick but
-// Pushing 1,2 quick on B, then on A gets back to connection
+// If on B wait between 1 and 2 get time out and both got to start up screen
+// push 2 on each and connect BUT sometimes accelerometer timer gets killed
+// so display stops. Will say FOUND PLAYER first time, then blank.
+// Must restart to fix
+// With multiple swadges nearby more sensitive to the problem
+// TODO Why
 
 /*============================================================================
  * Includes
@@ -173,7 +176,7 @@ struct
     // Timers
     struct
     {
-        os_timer_t StartPlaying;
+        //os_timer_t StartPlaying;
         os_timer_t ConnLed;
         os_timer_t ShowConnectionLed;
         os_timer_t GameLed;
@@ -273,7 +276,8 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
         case CON_LOST:
         {
             //TODO Did this fix hang?
-            joust.gameState = R_MENU;
+            joustDisarmAllLedTimers();
+            os_timer_arm(&joust.tmr.RestartJoust, 500, false);
             break;
         }
     }
@@ -384,12 +388,7 @@ void ICACHE_FLASH_ATTR joustInit(void)
 
     ets_memset(&joust, 0, sizeof(joust));
     joust_printf("%s\r\n", __func__);
-    joust.gam.joustWins = getJoustWins();
-    if(joust.gam.joustWins > 10000)
-    {
-        setJoustWins(0);
-    }
-
+    joust.gam.joustWins = 0; //getJoustWins();
     clearDisplay();
 
     // Set up a timer to scroll the instructions
@@ -414,10 +413,6 @@ void ICACHE_FLASH_ATTR joustInit(void)
     // Set up a timer for showing a successful connection, don't start it
     os_timer_disarm(&joust.tmr.ShowConnectionLed);
     os_timer_setfn(&joust.tmr.ShowConnectionLed, joustShowConnectionLedTimeout, NULL);
-
-    // Set up a timer for starting the next round, don't start it
-    os_timer_disarm(&joust.tmr.StartPlaying);
-    os_timer_setfn(&joust.tmr.StartPlaying, joustStartPlaying, NULL);
 
     // Set up a timer to update LEDs, start it
     os_timer_disarm(&joust.tmr.ConnLed);
@@ -503,7 +498,6 @@ void ICACHE_FLASH_ATTR joustDeinit(void)
 {
     joust_printf("%s\r\n", __func__);
     p2pDeinit(&joust.p2pJoust);
-    os_timer_disarm(&joust.tmr.StartPlaying);
     os_timer_disarm(&joust.tmr.RestartJoust);
     os_timer_disarm(&joust.tmr.RestartJoustPlay);
     joustDisarmAllLedTimers();
@@ -516,6 +510,9 @@ void ICACHE_FLASH_ATTR joustDeinit(void)
  */
 void ICACHE_FLASH_ATTR joustRestart(void* arg __attribute__((unused)))
 {
+    joust_printf("%s\r\n", __func__);
+    //p2pRestart(&joust.p2pJoust); // does nothing!
+    //use this instead
     joustDeinit();
     joustInit();
 }
@@ -766,7 +763,7 @@ void ICACHE_FLASH_ATTR joustUpdateDisplay(void)
  */
 void ICACHE_FLASH_ATTR joustAccelerometerHandler(accel_t* accel)
 {
-
+    //joust_printf("a"); // to see if getting called, sometimes stops
     if(joust.gameState != R_MENU)
     {
         joust.joustAccel.x = accel->x;
@@ -898,7 +895,10 @@ void ICACHE_FLASH_ATTR joustButton( uint8_t state __attribute__((unused)),
     // No matter what state left button bails out and restarts
     if(1 == button)
     {
-        os_timer_arm(&joust.tmr.RestartJoust, 10, false);
+        joustDisarmAllLedTimers();
+        joustRestart(NULL);
+        //os_timer_arm(&joust.tmr.RestartJoust, 100, false);
+        //os_timer_arm(&joust.tmr.RestartJoust, 10, false);
     }
 
     if(joust.gameState == R_MENU)
@@ -913,11 +913,7 @@ void ICACHE_FLASH_ATTR joustButton( uint8_t state __attribute__((unused)),
             os_timer_arm(&joust.tmr.ConnLed, 1, true);
             p2pStartConnection(&joust.p2pJoust);
             clearDisplay();
-            plotText(0, 0, "Searching", IBM_VGA_8, WHITE);
-            plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1) - 3), "Stand near your", IBM_VGA_8, WHITE);
-            plotText(0, OLED_HEIGHT - (1 * (FONT_HEIGHT_IBMVGA8 + 1)), "opponent now!", IBM_VGA_8, WHITE);
-
-
+            plotText(0, 0, "R_Searching", IBM_VGA_8, WHITE);
         }
     }
     else if(joust.gameState == R_PLAYING)
@@ -965,6 +961,7 @@ void ICACHE_FLASH_ATTR joustMsgTxCbFn(p2pInfo* p2p __attribute__((unused)),
         }
         case MSG_FAILED:
         {
+            //TODO test case for this
             joust_printf("%s MSG_FAILED\n", __func__);
             joustDisarmAllLedTimers();
             os_timer_arm(&joust.tmr.RestartJoust, 100, false);
@@ -1034,6 +1031,7 @@ void ICACHE_FLASH_ATTR joustRoundResult(int roundWinner)
         clearDisplay();
         plotText(0, 0, "Loser", IBM_VGA_8, WHITE);
     }
-    setJoustWins(joust.gam.joustWins);
+    //Stop saving results in flash
+    //setJoustWins(joust.gam.joustWins);
     os_timer_arm(&joust.tmr.RestartJoustPlay, 1000, false);
 }
