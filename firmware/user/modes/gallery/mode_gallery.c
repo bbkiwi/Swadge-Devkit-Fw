@@ -905,10 +905,11 @@ void ICACHE_FLASH_ATTR galButtonCallback(uint8_t state __attribute__((unused)),
  */
 bool ICACHE_FLASH_ATTR galIsImageUnlocked(void)
 {
-    if(gal.cImage > (NUM_IMAGES - 5) && gal.cImage != NUM_IMAGES - 1)
+    if(gal.cImage > (NUM_IMAGES - 6) && gal.cImage != NUM_IMAGES - 1)
+    // cImage = 13,14,15, or 16 only need be checked
     {
         // Check to see if it's unlocked
-        if(getGalleryUnlocks() & 1 << (gal.cImage - (NUM_IMAGES - 4)))
+        if(getGalleryUnlocks() & 1 << (gal.cImage - (NUM_IMAGES - 5)))
         {
             // unlocked
             return true;
@@ -921,7 +922,7 @@ bool ICACHE_FLASH_ATTR galIsImageUnlocked(void)
     }
     else
     {
-        // First image always unlocked
+        // All other images always unlocked
         return true;
     }
 }
@@ -932,24 +933,24 @@ bool ICACHE_FLASH_ATTR galIsImageUnlocked(void)
 const galImage_t* ICACHE_FLASH_ATTR galGetCurrentImage(void)
 {
     const galImage_t* imageToLoad;
-    // If we're not on the first image
-    if(gal.cImage > (NUM_IMAGES - 5) && gal.cImage != NUM_IMAGES - 1)
+    // If we're images 13,14,15, or 16 resp
+    if(gal.cImage > (NUM_IMAGES - 6) && gal.cImage != NUM_IMAGES - 1)
     {
         // Check to see if it's unlocked
-        if(getGalleryUnlocks() & 1 << (gal.cImage - (NUM_IMAGES - 4)))
+        if(getGalleryUnlocks() & 1 << (gal.cImage - (NUM_IMAGES - 5)))
         {
-            // unlocked
+            // unlocked so load image
             imageToLoad = galImages[gal.cImage];
         }
         else
         {
-            // Not unlocked
-            imageToLoad = galUnlockPlaceholders[gal.cImage - (NUM_IMAGES - 4)];
+            // Not unlocked so load place holder image 0, 1, 2, 3 resp
+            imageToLoad = galUnlockPlaceholders[gal.cImage - (NUM_IMAGES - 5)];
         }
     }
     else
     {
-        // First image always unlocked
+        // Other images always unlocked
         imageToLoad = galImages[gal.cImage];
     }
     return imageToLoad;
