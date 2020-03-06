@@ -3,21 +3,24 @@
 
 #include <osapi.h>
 #include "user_main.h"
+#include "buttons.h"
 
 typedef enum
 {
     NOT_SET,
-    GOING_SECOND,
-    GOING_FIRST
+    GOING_FIRST,
+    GOING_SECOND
 } playOrder_t;
 
 typedef enum
 {
     CON_STARTED,
+    RX_BROADCAST,
     RX_GAME_START_ACK,
     RX_GAME_START_MSG,
     CON_ESTABLISHED,
-    CON_LOST
+    CON_LOST,
+    CON_STOPPED
 } connectionEvt_t;
 
 typedef enum
@@ -37,9 +40,10 @@ typedef struct _p2pInfo
 {
     // Messages that every mode uses
     char msgId[4];
-    char conMsg[8];
+    char conMsg[10];
     char ackMsg[32];
     char startMsg[32];
+    button_mask side;
 
     // Callback function pointers
     p2pConCbFn conCbFn;
@@ -63,12 +67,14 @@ typedef struct _p2pInfo
     struct
     {
         bool isConnected;
+        bool isConnecting;
         bool broadcastReceived;
         bool rxGameStartMsg;
         bool rxGameStartAck;
         playOrder_t playOrder;
         char macStr[18];
         uint8_t otherMac[6];
+        button_mask otherSide;
         bool otherMacReceived;
         uint8_t mySeqNum;
         uint8_t lastSeqNum;
@@ -90,6 +96,7 @@ void ICACHE_FLASH_ATTR p2pInitialize(p2pInfo* p2p, char* msgId,
 void ICACHE_FLASH_ATTR p2pDeinit(p2pInfo* p2p);
 
 void ICACHE_FLASH_ATTR p2pStartConnection(p2pInfo* p2p);
+void ICACHE_FLASH_ATTR p2pStopConnection(p2pInfo* p2p);
 
 void ICACHE_FLASH_ATTR p2pSendMsg(p2pInfo* p2p, char* msg, char* payload, uint16_t len, p2pMsgTxCbFn msgTxCbFn);
 void ICACHE_FLASH_ATTR p2pSendCb(p2pInfo* p2p, uint8_t* mac_addr, mt_tx_status status);
@@ -97,5 +104,6 @@ void ICACHE_FLASH_ATTR p2pRecvCb(p2pInfo* p2p, uint8_t* mac_addr, uint8_t* data,
 
 playOrder_t ICACHE_FLASH_ATTR p2pGetPlayOrder(p2pInfo* p2p);
 void ICACHE_FLASH_ATTR p2pSetPlayOrder(p2pInfo* p2p, playOrder_t order);
+button_mask ICACHE_FLASH_ATTR p2pHex2Int(uint8_t in);
 
 #endif

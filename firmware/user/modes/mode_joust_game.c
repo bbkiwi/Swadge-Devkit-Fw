@@ -148,7 +148,7 @@ swadgeMode joustGameMode =
 
 };
 
-struct
+struct Joust_t
 {
     joustGameState_t gameState;
     accel_t joustAccel;
@@ -566,6 +566,8 @@ void ICACHE_FLASH_ATTR joustConnectionCallback(p2pInfo* p2p __attribute__((unuse
         }
         default:
         case CON_LOST:
+        case RX_BROADCAST:
+        case CON_STOPPED:
         {
             break;
         }
@@ -589,6 +591,16 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
     else
     {
         joust_printf("%s %s\n", __func__, msg);
+    }
+
+    //TODO fix bug? note not handle case of los received during R_GAME_OVER
+    if(0 == ets_memcmp(msg, "los", 3))
+    {
+        joust.gameState = R_PLAYING;
+    }
+    if(0 == ets_memcmp(msg, "win", 3) || 0 == ets_memcmp(msg, "tie", 3) )
+    {
+        joust.gameState = R_GAME_OVER;
     }
 
     switch(joust.gameState)
@@ -640,9 +652,10 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
             //then send our elo
             if(0 == ets_memcmp(msg, "col", 3))
             {
-                joust.con_color =  atoi((const char*)payload);
+                joust.con_color =  atoi((const char*)payload + 3);
+                os_printf("color used = %d\n", joust.con_color);
                 clearDisplay();
-                plotText(0, 0, "Found Player", IBM_VGA_8, WHITE);
+                plotText(0, 0, "Search Player", IBM_VGA_8, WHITE);
                 plotText(0, OLED_HEIGHT - (4 * (FONT_HEIGHT_IBMVGA8 + 1)), "Move theirs", IBM_VGA_8, WHITE);
                 plotText(0, OLED_HEIGHT - (3 * (FONT_HEIGHT_IBMVGA8 + 1)), "Not yours!", IBM_VGA_8, WHITE);
             }
@@ -667,7 +680,8 @@ void ICACHE_FLASH_ATTR joustMsgCallbackFn(p2pInfo* p2p __attribute__((unused)), 
  */
 void ICACHE_FLASH_ATTR joustInit(void)
 {
-    uint8_t i;
+    joust_printf("%s\r\n", __func__);
+    uint16_t i;
     for(i = 0; i < 6; i++)
     {
         joust.led.Leds[i].r = 0;
@@ -677,8 +691,38 @@ void ICACHE_FLASH_ATTR joustInit(void)
 
     setLeds(joust.led.Leds, sizeof(joust.led.Leds));
 
+    // struct Joust_t joustcpy;
+    // joustcpy = joust;
+
+    // // Dump joust struct
+    // char* charJoustPtr = (char*)&joust;
+    // char* charJoustCpyPtr = (char*)&joustcpy;
+    // joust_printf("before zero joust.tmr size : %d bytes\n", sizeof(joust.tmr));
+    // for(i = 0; i < sizeof(joust.tmr); i++)
+    // {
+    //     joust_printf("%02x ", charPtr[i]);
+    // }
+    // joust_printf("\n");
+
+    //TODO this is sometimes over writing the timerHandlePollAccel
+    //joust = (const struct Joust_t){0};
     ets_memset(&joust, 0, sizeof(joust));
-    joust_printf("%s\r\n", __func__);
+
+    // //Used bisection to find which part of joust struct caused bug
+    // //Found it was tmr.ScrollInstructions which was not disarmed
+    // for(i = 237; i < 257; i++)
+    // {
+    //     charJoustPtr[i] = 0;
+    // }
+
+
+    // joust_printf("immed after zero joust.tmr size : %d bytes\n", sizeof(joust.tmr));
+    // for(i = 0; i < sizeof(joust.tmr); i++)
+    // {
+    //     joust_printf("%02x ", charPtr[i]);
+    // }
+    // joust_printf("\n");
+
     joust.gam.joustWins = getJoustWins();
     if(joust.gam.joustWins > 10000)
     {
@@ -750,6 +794,21 @@ void ICACHE_FLASH_ATTR joustInit(void)
 
     os_timer_disarm(&joust.tmr.FFACounter);
     os_timer_setfn(&joust.tmr.FFACounter, joustFFACounter, NULL);
+    // joust_printf("after all init joust.tmr size : %d bytes\n", sizeof(joust.tmr));
+    // for(i = 0; i < sizeof(joust.tmr); i++)
+    // {
+    //     joust_printf("%02x ", charPtr[i]);
+    // }
+    // joust_printf("\n");
+    // joust_printf("after all init joust size : %d bytes\n", sizeof(joust));
+    // for(i = 0; i < sizeof(joust); i++)
+    // {
+    //     if (charJoustPtr[i] != charJoustCpyPtr[i])
+    //     {
+    //         joust_printf("(%03d:%02x -> %02X) ", i, charJoustPtr[i], charJoustCpyPtr[i]);
+    //     }
+    // }
+    // joust_printf("\n");
 }
 
 /**
@@ -899,6 +958,7 @@ void ICACHE_FLASH_ATTR joustDeinit(void)
     os_timer_disarm(&joust.tmr.StartPlaying);
     os_timer_disarm(&joust.tmr.StartPlayingFFA);
     os_timer_disarm(&joust.tmr.RestartJoust);
+    os_timer_disarm(&joust.tmr.ScrollInstructions);
     joustDisarmAllLedTimers();
 }
 
@@ -1243,7 +1303,8 @@ void ICACHE_FLASH_ATTR joustUpdateDisplay(void)
  */
 void ICACHE_FLASH_ATTR joustAccelerometerHandler(accel_t* accel)
 {
-
+    //Bug was stopping accelerometer call back
+    //joust_printf(".");
     if(joust.gameState != R_MENU)
     {
         joust.joustAccel.x = accel->x;
