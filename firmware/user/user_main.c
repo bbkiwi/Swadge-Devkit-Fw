@@ -77,9 +77,7 @@ swadgeMode* swadgeModes[] =
      * It uses all hardware features to quickly validate if hardware is functional.
      * This comes before menuMode so the menu does not have to be navigated.
      */
-#ifdef TEST_MODE
-    &testMode,
-#endif
+
     /* SWADGE_2019 doesn't have an OLED, so this is useless.
      * For all other swadges, it comes first so the swadge boots into the menu.
      */
@@ -87,6 +85,9 @@ swadgeMode* swadgeModes[] =
     &menuMode,
 #endif
     /* These are the modes which are displayed in the menu */
+#ifdef TEST_MODE
+    &testMode,
+#endif
     &tiltradsMode,
     &snakeMode,
     &joustGameMode,

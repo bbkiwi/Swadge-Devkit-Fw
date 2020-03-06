@@ -7,7 +7,7 @@
 
 //The 2019 SWADGE can be used for testing - Its left button becomes mode change
 //    its white buttom becomes left, and the right button remains right
-
+#define TEST_MODE
 #define SWADGE_DEV_KIT 0
 #define SWADGE_BBKIWI  1
 #define SWADGE_BARREL  2

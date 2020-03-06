@@ -1,8 +1,16 @@
 /*
  * mode_test.c
  *
- *  Created on: Mar 27, 2019
- *      Author: adam
+ *  Example of zeroing out an armed timer killing the accelerometer timer
+ * Pushing Left button will fail to disarm a timer and then testEnterMode
+ *  again. testEnterMode zeros out all os_timer_t.
+ *  You may need to push L a few times for it to kill
+ *  static os_timer_t timerHandlePollAccel set up in user_main.c
+ * Serial output is button state and . for each call to testAccelerometerHandler
+ * The oled is driven by timerHandlePollAccel inside testAccelerometerHandler
+ * The LEDs are driven by both timerHandlePollAccel AND timerHandleLeds
+ *    so when timerHandlePollAccel dies, the readings stop, the . stop printing
+ *    and LEDs slow down
  */
 #include "user_config.h"
 #ifdef TEST_MODE
@@ -24,6 +32,7 @@
 #include "bresenham.h"
 #include "buttons.h"
 #include "hpatimer.h"
+#include "galleryImages.h"
 
 /*============================================================================
  * Defines
@@ -40,246 +49,15 @@
 
 void ICACHE_FLASH_ATTR testEnterMode(void);
 void ICACHE_FLASH_ATTR testExitMode(void);
+void ICACHE_FLASH_ATTR testBadExitMode(void);
 void ICACHE_FLASH_ATTR testButtonCallback(uint8_t state __attribute__((unused)),
         int button, int down);
 void ICACHE_FLASH_ATTR testAccelerometerHandler(accel_t* accel);
 
 void ICACHE_FLASH_ATTR testUpdateDisplay(void);
-static void ICACHE_FLASH_ATTR testRotateBanana(void* arg __attribute__((unused)));
+static void ICACHE_FLASH_ATTR testDummyCallback(void* arg __attribute__((unused)));
 static void ICACHE_FLASH_ATTR testLedFunc(void* arg __attribute__((unused)));
 
-/*============================================================================
- * Const data
- *==========================================================================*/
-
-const song_t BlackDog ICACHE_RODATA_ATTR =
-{
-    .notes = {
-        {.note = E_5, .timeMs = 188},
-        {.note = G_5, .timeMs = 188},
-        {.note = G_SHARP_5, .timeMs = 188},
-        {.note = A_5, .timeMs = 188},
-        {.note = E_5, .timeMs = 188},
-        {.note = C_6, .timeMs = 375},
-        {.note = A_5, .timeMs = 375},
-        {.note = D_6, .timeMs = 188},
-        {.note = E_6, .timeMs = 188},
-        {.note = C_6, .timeMs = 94},
-        {.note = D_6, .timeMs = 94},
-        {.note = C_6, .timeMs = 188},
-        {.note = A_5, .timeMs = 188},
-        {.note = A_5, .timeMs = 188},
-        {.note = C_6, .timeMs = 375},
-        {.note = A_5, .timeMs = 375},
-        {.note = G_5, .timeMs = 188},
-        {.note = A_5, .timeMs = 188},
-        {.note = A_5, .timeMs = 188},
-        {.note = D_5, .timeMs = 188},
-        {.note = E_5, .timeMs = 188},
-        {.note = C_5, .timeMs = 188},
-        {.note = D_5, .timeMs = 188},
-        {.note = A_4, .timeMs = 375},
-        {.note = A_4, .timeMs = 750},
-    },
-    .numNotes = 25,
-    .shouldLoop = true
-};
-
-const sprite_t rotating_banana[] ICACHE_RODATA_ATTR =
-{
-    // frame_0_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000000010000000,
-            0b0000000110000000,
-            0b0000000011000000,
-            0b0000000010100000,
-            0b0000000010010000,
-            0b0000000100010000,
-            0b0000000100001000,
-            0b0000000100001000,
-            0b0000000100001000,
-            0b0000001000001000,
-            0b0000010000001000,
-            0b0001100000010000,
-            0b0110000000100000,
-            0b0100000011000000,
-            0b0110011100000000,
-            0b0001100000000000,
-        }
-    },
-    // frame_1_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000000100000000,
-            0b0000000110000000,
-            0b0000000110000000,
-            0b0000000110000000,
-            0b0000001001000000,
-            0b0000001001000000,
-            0b0000001000100000,
-            0b0000001000100000,
-            0b0000010000100000,
-            0b0000010000100000,
-            0b0000010000100000,
-            0b0000100000100000,
-            0b0001000001000000,
-            0b0001000011000000,
-            0b0000111100000000,
-            0b0000000000000000,
-        }
-    },
-    // frame_2_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000000100000000,
-            0b0000001100000000,
-            0b0000001100000000,
-            0b0000010100000000,
-            0b0000010100000000,
-            0b0000100100000000,
-            0b0000100010000000,
-            0b0001000010000000,
-            0b0001000010000000,
-            0b0001000010000000,
-            0b0001000001000000,
-            0b0000100001000000,
-            0b0000100001000000,
-            0b0000011001000000,
-            0b0000000110000000,
-            0b0000000000000000,
-        }
-    },
-    // frame_3_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000001100000000,
-            0b0000001100000000,
-            0b0000011000000000,
-            0b0000101000000000,
-            0b0001001000000000,
-            0b0010001000000000,
-            0b0010000100000000,
-            0b0010000100000000,
-            0b0010000100000000,
-            0b0010000010000000,
-            0b0001000001000000,
-            0b0001000000110000,
-            0b0000100000001000,
-            0b0000011000000100,
-            0b0000000111111000,
-            0b0000000000000000,
-        }
-    },
-    // frame_4_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000001100000000,
-            0b0000001100000000,
-            0b0000011000000000,
-            0b0000101000000000,
-            0b0001001100000000,
-            0b0010000100000000,
-            0b0010000100000000,
-            0b0010000100000000,
-            0b0010000010000000,
-            0b0010000010000000,
-            0b0001000001000000,
-            0b0001000000100000,
-            0b0000100000011000,
-            0b0000010000000100,
-            0b0000001100000100,
-            0b0000000011111100,
-        }
-    },
-    // frame_5_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000000100000000,
-            0b0000001100000000,
-            0b0000001100000000,
-            0b0000010010000000,
-            0b0000010010000000,
-            0b0000100010000000,
-            0b0000100001000000,
-            0b0000100001000000,
-            0b0000100001000000,
-            0b0000100001000000,
-            0b0000100000100000,
-            0b0000010000100000,
-            0b0000010000100000,
-            0b0000001000010000,
-            0b0000001000010000,
-            0b0000000111110000,
-        }
-    },
-    // frame_6_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000000100000000,
-            0b0000000110000000,
-            0b0000000101000000,
-            0b0000000100100000,
-            0b0000000100100000,
-            0b0000001000100000,
-            0b0000001000010000,
-            0b0000001000010000,
-            0b0000001000010000,
-            0b0000010000010000,
-            0b0000010000100000,
-            0b0000010000100000,
-            0b0000010000100000,
-            0b0000010000100000,
-            0b0000100001000000,
-            0b0000111110000000,
-        }
-    },
-    // frame_7_delay-0.07s.png
-    {
-        .width = 16,
-        .height = 16,
-        .data =
-        {
-            0b0000000110000000,
-            0b0000000011000000,
-            0b0000000010100000,
-            0b0000000010100000,
-            0b0000000010010000,
-            0b0000000100001000,
-            0b0000000100001000,
-            0b0000000100001000,
-            0b0000000100001000,
-            0b0000001000001000,
-            0b0000010000010000,
-            0b0000100000010000,
-            0b0001000000100000,
-            0b0010000001000000,
-            0b0100000010000000,
-            0b0111111100000000,
-        }
-    },
-};
 
 /*============================================================================
  * Variables
@@ -294,7 +72,9 @@ swadgeMode testMode =
     .wifiMode = SOFT_AP,
     .fnEspNowRecvCb = NULL,
     .fnEspNowSendCb = NULL,
-    .fnAccelerometerCallback = testAccelerometerHandler
+    .fnAccelerometerCallback = testAccelerometerHandler,
+    .menuImageData = gal_bongo_0,
+    .menuImageLen = sizeof(gal_bongo_0)
 };
 
 struct
@@ -304,9 +84,8 @@ struct
     uint8_t ButtonState;
 
     // Timer variables
-    os_timer_t TimerHandleLeds;
-    os_timer_t timerHandleBanana;
-    uint8_t BananaIdx;
+    os_timer_t timerHandleLeds;
+    os_timer_t timerKiller;
 } test;
 
 /*============================================================================
@@ -323,18 +102,17 @@ void ICACHE_FLASH_ATTR testEnterMode(void)
     // Clear everything
     memset(&test, 0, sizeof(test));
 
-    // Test the buzzer
-    startBuzzerSong(&BlackDog);
-
-    // Test the display with a rotating banana
-    os_timer_disarm(&test.timerHandleBanana);
-    os_timer_setfn(&test.timerHandleBanana, (os_timer_func_t*)testRotateBanana, NULL);
-    os_timer_arm(&test.timerHandleBanana, 100, 1);
 
     // Test the LEDs
-    os_timer_disarm(&test.TimerHandleLeds);
-    os_timer_setfn(&test.TimerHandleLeds, (os_timer_func_t*)testLedFunc, NULL);
-    os_timer_arm(&test.TimerHandleLeds, 1000, 1);
+    os_timer_disarm(&test.timerHandleLeds);
+    os_timer_setfn(&test.timerHandleLeds, (os_timer_func_t*)testLedFunc, NULL);
+    os_timer_arm(&test.timerHandleLeds, 1000, 1);
+
+    // Set up a timer that won't be disarmed if L button pushed
+    os_timer_disarm(&test.timerKiller);
+    os_timer_setfn(&test.timerKiller, (os_timer_func_t*)testDummyCallback, NULL);
+    os_timer_arm(&test.timerKiller, 100, 1);
+
 }
 
 /**
@@ -342,9 +120,15 @@ void ICACHE_FLASH_ATTR testEnterMode(void)
  */
 void ICACHE_FLASH_ATTR testExitMode(void)
 {
-    stopBuzzerSong();
-    os_timer_disarm(&test.timerHandleBanana);
-    os_timer_disarm(&test.TimerHandleLeds);
+    os_timer_disarm(&test.timerKiller);
+    os_timer_disarm(&test.timerHandleLeds);
+}
+
+void ICACHE_FLASH_ATTR testBadExitMode(void)
+{
+    // Forget to disarm &test.timerKiller
+    //os_timer_disarm(&test.timerKiller);
+    os_timer_disarm(&test.timerHandleLeds);
 }
 
 /**
@@ -364,15 +148,15 @@ static void ICACHE_FLASH_ATTR testLedFunc(void* arg __attribute__((unused)))
 }
 
 /**
- * @brief Called on a timer, this rotates the banana by picking the next sprite
+ * @brief Called on a timer
  *
  * @param arg unused
  */
-static void ICACHE_FLASH_ATTR testRotateBanana(void* arg __attribute__((unused)))
+static void ICACHE_FLASH_ATTR testDummyCallback(void* arg __attribute__((unused)))
 {
-    test.BananaIdx = (test.BananaIdx + 1) % (sizeof(rotating_banana) / sizeof(rotating_banana[0]));
-    testUpdateDisplay();
+
 }
+
 
 /**
  * TODO
@@ -383,7 +167,7 @@ void ICACHE_FLASH_ATTR testUpdateDisplay(void)
     clearDisplay();
 
     // Draw a title
-    plotText(0, 0, "TEST MODE", RADIOSTARS, WHITE);
+    plotText(0, 0, "L kills accel", IBM_VGA_8, WHITE);
 
     // Display the acceleration on the display
     char accelStr[32] = {0};
@@ -463,8 +247,6 @@ void ICACHE_FLASH_ATTR testUpdateDisplay(void)
         plotCircle(BTN_CTR_X + BTN_OFF, BTN_CTR_Y, BTN_RAD, WHITE);
     }
 
-    // Draw the banana
-    plotSprite(50, 32, &rotating_banana[test.BananaIdx], WHITE);
 }
 
 /**
@@ -474,13 +256,24 @@ void ICACHE_FLASH_ATTR testUpdateDisplay(void)
  * @param button The button which triggered this event
  * @param down   true if the button was pressed, false if it was released
  */
-void ICACHE_FLASH_ATTR testButtonCallback( uint8_t state,
-        int button __attribute__((unused)), int down __attribute__((unused)))
+void ICACHE_FLASH_ATTR testButtonCallback( uint8_t state, int button, int down)
 {
     os_printf("btn: %d\n", state);
     test.ButtonState = state;
-    testUpdateDisplay();
+
+    if(!down)
+    {
+        // Ignore all button releases
+        return;
+    }
+    if(1 == button)
+    {
+        //Kill accelerometer timer!
+        testBadExitMode();
+        testEnterMode();
+    }
 }
+
 
 /**
  * Store the acceleration data to be displayed later
@@ -491,10 +284,12 @@ void ICACHE_FLASH_ATTR testButtonCallback( uint8_t state,
  */
 void ICACHE_FLASH_ATTR testAccelerometerHandler(accel_t* accel)
 {
+    os_printf(".");
     test.Accel.x = accel->x;
     test.Accel.y = accel->y;
     test.Accel.z = accel->z;
     testUpdateDisplay();
+    testLedFunc(NULL);
 }
 
 #endif
