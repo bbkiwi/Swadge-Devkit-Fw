@@ -500,6 +500,7 @@ void ICACHE_FLASH_ATTR joustDeinit(void)
     p2pDeinit(&joust.p2pJoust);
     os_timer_disarm(&joust.tmr.RestartJoust);
     os_timer_disarm(&joust.tmr.RestartJoustPlay);
+    os_timer_disarm(&joust.tmr.ScrollInstructions);
     joustDisarmAllLedTimers();
 }
 
